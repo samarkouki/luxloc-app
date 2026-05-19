@@ -173,8 +173,14 @@ def price_estimate(article_id: int, nb_days: int = Query(ge=1), db: Session = De
 
 
 def _enrich_article(article: Article, db: Session) -> dict:
-    """Ajoute les infos de vérification à un article"""
+    """Ajoute les infos de vérification et la photo principale à un article"""
     verif = db.query(Verification).filter(Verification.article_id == article.id).first()
+    # Photo principale : on récupère la photo 'overview' si elle a une image
+    overview = (db.query(ArticlePhoto)
+                .filter(ArticlePhoto.article_id == article.id,
+                        ArticlePhoto.photo_type == "overview",
+                        ArticlePhoto.image_data.isnot(None))
+                .first())
     return {
         "id": article.id,
         "owner_id": article.owner_id,
@@ -188,5 +194,6 @@ def _enrich_article(article: Article, db: Session) -> dict:
         "is_available": article.is_available,
         "verification_status": verif.status.value if verif else None,
         "verification_score": verif.score_global if verif else None,
+        "photo": overview.image_data if overview else None,
         "created_at": article.created_at,
     }

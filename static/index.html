@@ -465,9 +465,10 @@ const BRAND_VISUALS = {
   "Dior": {bg:"linear-gradient(145deg,#E8E0D0 0%,#C4B89C 50%,#8B7D5E 100%)",pattern:"CD",emoji:"👜"},
 };
 function getBrandVisual(brand) { return BRAND_VISUALS[brand] || {bg:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",pattern:brand?brand.substring(0,2):"?",emoji:"✦"}; }
-function ProductImage({brand,articleId,hovered,style}) {
+function ProductImage({brand,articleId,photo,hovered,style}) {
   const v = getBrandVisual(brand);
-  const uploadedImg = window._luxlocPhotos && window._luxlocPhotos[articleId];
+  // Priorité : photo renvoyée par le backend, puis cache mémoire local, puis visuel de marque
+  const uploadedImg = photo || (window._luxlocPhotos && window._luxlocPhotos[articleId]);
   return <div style={{...style,background:v.bg,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all 0.4s",overflow:"hidden"}}>
     {uploadedImg ? <img src={uploadedImg} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:hovered?0.9:0.8,transition:"opacity 0.3s"}}/>
     : <>
@@ -495,7 +496,7 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
         {filtered.map(p=><div key={p.id} onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)} onClick={()=>{setSelectedArticle(p);setScreen(SCREENS.RENTER_DETAIL);}} style={{cursor:"pointer",border:"1px solid rgba(245,240,235,0.06)",background:hovered===p.id?"rgba(245,240,235,0.02)":"transparent",transition:"all 0.3s"}}>
-          <ProductImage brand={p.brand} articleId={p.id} hovered={hovered===p.id} style={{height:220}} />
+          <ProductImage brand={p.brand} articleId={p.id} photo={p.photo} hovered={hovered===p.id} style={{height:220}} />
           {p.verification_score&&<div style={{position:"relative",marginTop:-32,marginRight:12,textAlign:"right",zIndex:2}}><span style={{padding:"4px 10px",background:"rgba(12,10,9,0.85)",border:"1px solid rgba(93,202,165,0.3)",fontSize:10,color:"#5DCAA5",letterSpacing:1}}>VÉRIFIÉ {p.verification_score.toFixed(2)}</span></div>}
           <div style={{padding:"12px 20px 16px"}}>
             <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1,marginBottom:4}}>{p.brand}</div>
@@ -534,7 +535,7 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
       <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{background:"none",border:"none",color:"rgba(245,240,235,0.4)",fontSize:12,cursor:"pointer",marginBottom:24}}>← Retour au catalogue</button>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40}}>
         <div>
-          <ProductImage brand={article.brand} articleId={article.id} style={{aspectRatio:"1",marginBottom:12}} />
+          <ProductImage brand={article.brand} articleId={article.id} photo={article.photo} style={{aspectRatio:"1",marginBottom:12}} />
         </div>
         <div>
           {article.verification_score&&<span style={{padding:"4px 10px",background:"rgba(93,202,165,0.1)",border:"1px solid rgba(93,202,165,0.3)",fontSize:10,color:"#5DCAA5",letterSpacing:1}}>VÉRIFIÉ IA — {article.verification_score.toFixed(2)}</span>}
@@ -667,7 +668,7 @@ function OwnerDashboard({setScreen,user,showToast}){
         </div>
         {articles.length===0?<div style={{padding:40,border:"1px dashed rgba(245,240,235,0.1)",textAlign:"center",color:"rgba(245,240,235,0.3)"}}>Aucun article déposé. Commencez par ajouter un article.</div>
         :articles.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:20,padding:16,border:"1px solid rgba(245,240,235,0.06)",marginBottom:8}}>
-          <ProductImage brand={a.brand} articleId={a.id} style={{width:70,height:70,flexShrink:0}}/>
+          <ProductImage brand={a.brand} articleId={a.id} photo={a.photo} style={{width:70,height:70,flexShrink:0}}/>
           <div style={{flex:1}}>
             <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1}}>{a.brand}</div>
             <div style={{fontSize:15,fontWeight:500}}>{a.title}</div>
@@ -735,7 +736,7 @@ function RenterPayment({setScreen,article,txData,showToast}){
       {/* Order summary */}
       <div style={{border:"1px solid rgba(245,240,235,0.08)",padding:24,marginBottom:24}}>
         <div style={{display:"flex",gap:16,marginBottom:20}}>
-          <ProductImage brand={article.brand} articleId={article.id} style={{width:80,height:80,flexShrink:0}}/>
+          <ProductImage brand={article.brand} articleId={article.id} photo={article.photo} style={{width:80,height:80,flexShrink:0}}/>
           <div>
             <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1}}>{article.brand}</div>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:17}}>{article.title}</div>

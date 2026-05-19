@@ -48,49 +48,60 @@ def health():
 
 @app.post("/api/v1/seed", tags=["Root"])
 def seed_demo_data():
-    """Injecte des données de démo dans la base"""
+    """Injecte les comptes et donnees de demo. Idempotent : ne recree pas
+    ce qui existe deja, mais garantit la presence des comptes de demo."""
     db = SessionLocal()
     try:
-        # Vérifier si déjà peuplé
-        if db.query(User).count() > 0:
-            return {"message": "Données déjà présentes", "users": db.query(User).count(), "articles": db.query(Article).count()}
-
         def hash_pw(pw):
             return hashlib.sha256(pw.encode()).hexdigest()
 
-        # Créer des utilisateurs
-        users_data = [
-            User(email="sophie@luxloc.fr", hashed_password=hash_pw("demo123"), first_name="Sophie", last_name="Martin", role=UserRole.OWNER, is_verified=True, trust_score=0.92),
-            User(email="emma@luxloc.fr", hashed_password=hash_pw("demo123"), first_name="Emma", last_name="Dubois", role=UserRole.RENTER, is_verified=True, trust_score=0.88),
-            User(email="lucas@luxloc.fr", hashed_password=hash_pw("demo123"), first_name="Lucas", last_name="Bernard", role=UserRole.BOTH, is_verified=True, trust_score=0.95),
-        ]
-        db.add_all(users_data)
-        db.flush()
+        # Le compte de demo de reference
+        sophie = db.query(User).filter(User.email == "sophie@luxloc.fr").first()
+        if sophie:
+            return {
+                "message": "Donnees de demo deja presentes",
+                "users": db.query(User).count(),
+                "articles": db.query(Article).count(),
+                "login_demo": {"email": "sophie@luxloc.fr", "password": "demo123"},
+            }
 
-        # Créer des articles
+        # Creation des comptes de demo
+        sophie = User(email="sophie@luxloc.fr", hashed_password=hash_pw("demo123"),
+                      first_name="Sophie", last_name="Martin", role=UserRole.OWNER,
+                      is_verified=True, trust_score=0.92)
+        emma = User(email="emma@luxloc.fr", hashed_password=hash_pw("demo123"),
+                    first_name="Emma", last_name="Dubois", role=UserRole.RENTER,
+                    is_verified=True, trust_score=0.88)
+        lucas = User(email="lucas@luxloc.fr", hashed_password=hash_pw("demo123"),
+                     first_name="Lucas", last_name="Bernard", role=UserRole.BOTH,
+                     is_verified=True, trust_score=0.95)
+        db.add_all([sophie, emma, lucas])
+        db.flush()  # recupere les IDs reels
+
+        S, L = sophie.id, lucas.id
+
         articles_data = [
-            Article(owner_id=1, title="Speedy Bandoulière 25", brand="Louis Vuitton", model="Speedy 25", category=ArticleCategory.BAGS, description="Toile Monogram, cuir naturel. État impeccable, porté 3 fois.", price_per_day=85, retail_price=1200, condition="Excellent", is_available=True),
-            Article(owner_id=1, title="Marmont Small Shoulder", brand="Gucci", model="Marmont GG", category=ArticleCategory.BAGS, description="Cuir matelassé noir, quincaillerie dorée.", price_per_day=65, retail_price=980, condition="Très bon", is_available=True),
-            Article(owner_id=3, title="Submariner Date 41mm", brand="Rolex", model="126610LN", category=ArticleCategory.WATCHES, description="Acier Oystersteel, lunette Cerachrom noire. Révision 2024.", price_per_day=220, retail_price=9500, condition="Excellent", is_available=True),
-            Article(owner_id=3, title="Kelly 28 Retourné", brand="Hermès", model="Kelly 28 Togo", category=ArticleCategory.BAGS, description="Cuir Togo Gold, quincaillerie Palladium. Livré avec dustbag et boîte.", price_per_day=195, retail_price=8500, condition="Excellent", is_available=True),
-            Article(owner_id=1, title="Collier Vintage Alhambra", brand="Van Cleef & Arpels", model="Alhambra 10 motifs", category=ArticleCategory.JEWELRY, description="Or jaune 18K, nacre blanche. Certificat inclus.", price_per_day=110, retail_price=4800, condition="Neuf", is_available=True),
-            Article(owner_id=3, title="Trench Heritage", brand="Burberry", model="Heritage Classic", category=ArticleCategory.CLOTHING, description="Gabardine de coton miel, taille 38. Ceinture et boutonnage d'origine.", price_per_day=55, retail_price=1800, condition="Bon", is_available=False),
-            Article(owner_id=1, title="Aviator Classic", brand="Ray-Ban", model="RB3025", category=ArticleCategory.EYEWEAR, description="Monture or, verres verts G-15. Édition originale.", price_per_day=15, retail_price=180, condition="Excellent", is_available=True),
-            Article(owner_id=3, title="Santos de Cartier", brand="Cartier", model="Santos Medium", category=ArticleCategory.WATCHES, description="Acier et or jaune 18K. Bracelet interchangeable.", price_per_day=180, retail_price=7200, condition="Excellent", is_available=True),
+            Article(owner_id=S, title="Speedy Bandouliere 25", brand="Louis Vuitton", model="Speedy 25", category=ArticleCategory.BAGS, description="Toile Monogram, cuir naturel. Etat impeccable, porte 3 fois.", price_per_day=85, retail_price=1200, condition="Excellent", is_available=True),
+            Article(owner_id=S, title="Marmont Small Shoulder", brand="Gucci", model="Marmont GG", category=ArticleCategory.BAGS, description="Cuir matelasse noir, quincaillerie doree.", price_per_day=65, retail_price=980, condition="Tres bon", is_available=True),
+            Article(owner_id=L, title="Submariner Date 41mm", brand="Rolex", model="126610LN", category=ArticleCategory.WATCHES, description="Acier Oystersteel, lunette Cerachrom noire. Revision 2024.", price_per_day=220, retail_price=9500, condition="Excellent", is_available=True),
+            Article(owner_id=L, title="Kelly 28 Retourne", brand="Hermes", model="Kelly 28 Togo", category=ArticleCategory.BAGS, description="Cuir Togo Gold, quincaillerie Palladium. Livre avec dustbag et boite.", price_per_day=195, retail_price=8500, condition="Excellent", is_available=True),
+            Article(owner_id=S, title="Collier Vintage Alhambra", brand="Van Cleef & Arpels", model="Alhambra 10 motifs", category=ArticleCategory.JEWELRY, description="Or jaune 18K, nacre blanche. Certificat inclus.", price_per_day=110, retail_price=4800, condition="Neuf", is_available=True),
+            Article(owner_id=L, title="Trench Heritage", brand="Burberry", model="Heritage Classic", category=ArticleCategory.CLOTHING, description="Gabardine de coton miel, taille 38. Ceinture et boutonnage d'origine.", price_per_day=55, retail_price=1800, condition="Bon", is_available=False),
+            Article(owner_id=S, title="Aviator Classic", brand="Ray-Ban", model="RB3025", category=ArticleCategory.EYEWEAR, description="Monture or, verres verts G-15. Edition originale.", price_per_day=15, retail_price=180, condition="Excellent", is_available=True),
+            Article(owner_id=L, title="Santos de Cartier", brand="Cartier", model="Santos Medium", category=ArticleCategory.WATCHES, description="Acier et or jaune 18K. Bracelet interchangeable.", price_per_day=180, retail_price=7200, condition="Excellent", is_available=True),
         ]
         db.add_all(articles_data)
         db.flush()
 
-        # Créer des photos pour les articles
         photo_types = ["overview", "logo", "label", "stitching"]
         for art in articles_data:
             for pt in photo_types:
-                db.add(ArticlePhoto(article_id=art.id, photo_type=pt, file_path=f"gs://luxloc-photos/{art.id}/{pt}.jpg"))
+                db.add(ArticlePhoto(article_id=art.id, photo_type=pt,
+                                    file_path=f"gs://luxloc-photos/{art.id}/{pt}.jpg"))
 
-        # Créer des vérifications pour les articles disponibles
+        import random
         for art in articles_data:
             if art.is_available:
-                import random
                 sg = round(0.85 + random.uniform(0, 0.12), 4)
                 db.add(Verification(
                     article_id=art.id, status=VerificationStatus.VERIFIED,
@@ -103,9 +114,8 @@ def seed_demo_data():
                     pipeline_version="v0.1-poc", processing_time_ms=random.randint(8000, 14000),
                 ))
 
-        # Créer une transaction de démo
         db.add(Transaction(
-            article_id=4, renter_id=2, status=TransactionStatus.ACTIVE,
+            article_id=articles_data[3].id, renter_id=emma.id, status=TransactionStatus.ACTIVE,
             date_start=datetime.utcnow(), date_end=datetime.utcnow() + timedelta(days=3),
             nb_days=3, price_per_day=195, insurance_fee=25, total_amount=610,
             commission=122, guarantee_amount=975,
@@ -113,11 +123,9 @@ def seed_demo_data():
 
         db.commit()
         return {
-            "message": "Données de démo injectées avec succès !",
+            "message": "Donnees de demo injectees avec succes !",
             "users": 3,
             "articles": len(articles_data),
-            "verifications": sum(1 for a in articles_data if a.is_available),
-            "transactions": 1,
             "login_demo": {"email": "sophie@luxloc.fr", "password": "demo123"},
         }
     finally:
