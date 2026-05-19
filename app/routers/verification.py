@@ -207,6 +207,43 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     }
 
 
+@router.post("/{article_id}/expert-validate")
+def expert_validate(article_id: int, db: Session = Depends(get_db)):
+    """
+    Validation par un expert humain — étape de routing pour les articles
+    en statut 'review' (score 0.40-0.84). L'expert tranche : l'article
+    est validé, sa dernière vérification passe à VERIFIED et il devient
+    disponible à la location.
+
+    En production, cette action serait réservée à un compte expert
+    authentifié et tracée.
+    """
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    verif = (db.query(Verification)
+             .filter(Verification.article_id == article_id)
+             .order_by(Verification.id.desc())
+             .first())
+    if not verif:
+        raise HTTPException(status_code=400, detail="Aucune vérification à valider")
+    if verif.status == VerificationStatus.REJECTED:
+        raise HTTPException(status_code=400,
+                            detail="Article rejeté — non validable par expert")
+
+    verif.status = VerificationStatus.VERIFIED
+    article.is_available = True
+    db.commit()
+
+    return {
+        "message": "Article validé par l'expert",
+        "article_id": article_id,
+        "status": "verified",
+        "is_available": True,
+    }
+
+
 @router.get("/model/info")
 def get_model_info():
     """

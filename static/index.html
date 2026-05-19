@@ -468,9 +468,17 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
 }
 
 // ═══ OWNER RESULT ═══
-function OwnerResult({setScreen,verifResult}){
+function OwnerResult({setScreen,verifResult,showToast}){
   const [loaded,setLoaded]=useState(false);
+  const [validated,setValidated]=useState(false);
   useEffect(()=>{setTimeout(()=>setLoaded(true),200)},[]);
+  const expertValidate = async () => {
+    try {
+      await api(`/verification/${verifResult.article_id}/expert-validate`,{method:"POST"});
+      setValidated(true);
+      showToast && showToast("✓ Article validé par l'expert — disponible à la location");
+    } catch(e){ showToast && showToast("✗ "+e.message); }
+  };
   if(!verifResult) return null;
   const sc=verifResult.scores;
   const scores=[{label:"Modèle IA (authenticité)",score:sc.cnn},{label:"Logo & monogramme",score:sc.logo},{label:"Coutures & finitions",score:sc.stitching},{label:"Texture matériaux",score:sc.texture},{label:"Étiquette & série",score:sc.label},{label:"Règles métier",score:sc.rules},{label:"Facture d'achat",score:sc.invoice}];
@@ -503,6 +511,16 @@ function OwnerResult({setScreen,verifResult}){
           {brandSig.details.justesse_marine!==undefined&&<span>Justesse marine : {brandSig.details.justesse_marine}</span>}
         </div>
       </div>}
+      {verifResult.status==="review" && <div style={{border:`1px solid ${validated?"rgba(93,202,165,0.35)":"rgba(239,159,39,0.35)"}`,padding:24,marginBottom:24,background:validated?"rgba(45,106,79,0.08)":"rgba(239,159,39,0.06)"}}>
+        {validated ? <>
+          <div style={{fontSize:12,letterSpacing:2,color:"#5DCAA5",marginBottom:8}}>✓ VALIDÉ PAR L'EXPERT</div>
+          <p style={{fontSize:13,color:"rgba(245,240,235,0.6)",lineHeight:1.6}}>L'article a été validé et est désormais disponible à la location dans le catalogue.</p>
+        </> : <>
+          <div style={{fontSize:12,letterSpacing:2,color:"#EF9F27",marginBottom:8}}>EN ATTENTE DE VALIDATION EXPERT</div>
+          <p style={{fontSize:13,color:"rgba(245,240,235,0.6)",lineHeight:1.6,marginBottom:16}}>Le score se situe dans la zone d'incertitude (0,40–0,84). Conformément au pipeline, l'article est routé vers un expert humain qui tranche avant la mise en location.</p>
+          <button onClick={expertValidate} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>SIMULER LA VALIDATION PAR UN EXPERT</button>
+        </>}
+      </div>}
       <div style={{display:"flex",gap:12}}>
         <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(245,240,235,0.15)",background:"transparent",color:"#F5F0EB",cursor:"pointer"}}>VOIR LE CATALOGUE</button>
         <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>PUBLIER L'ANNONCE →</button>
@@ -528,6 +546,15 @@ const BRAND_VISUALS = {
   "Tommy Hilfiger": {bg:"linear-gradient(145deg,#001F5C 0%,#FFFFFF 50%,#C8102E 100%)",pattern:"TH",emoji:"👜"},
 };
 function getBrandVisual(brand) { return BRAND_VISUALS[brand] || {bg:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",pattern:brand?brand.substring(0,2):"?",emoji:"✦"}; }
+
+// Badge de vérification — reflète le vrai statut renvoyé par l'API
+function verifBadge(status, score) {
+  const s = score!=null ? " — "+score.toFixed(2) : "";
+  if(status==="verified") return {label:"VÉRIFIÉ IA"+s, color:"#5DCAA5", border:"rgba(93,202,165,0.35)", bg:"rgba(45,106,79,0.14)"};
+  if(status==="review")   return {label:"EN EXAMEN EXPERT"+s, color:"#EF9F27", border:"rgba(239,159,39,0.4)", bg:"rgba(239,159,39,0.1)"};
+  if(status==="rejected") return {label:"NON CERTIFIÉ", color:"#E08585", border:"rgba(224,133,133,0.4)", bg:"rgba(224,133,133,0.1)"};
+  return null;
+}
 function ProductImage({brand,articleId,photo,hovered,style}) {
   const v = getBrandVisual(brand);
   // Priorité : photo renvoyée par le backend, puis cache mémoire local, puis visuel de marque
@@ -560,7 +587,7 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
         {filtered.map(p=><div key={p.id} onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)} onClick={()=>{setSelectedArticle(p);setScreen(SCREENS.RENTER_DETAIL);}} style={{cursor:"pointer",border:`1px solid ${hovered===p.id?"rgba(201,168,76,0.35)":"rgba(245,240,235,0.07)"}`,background:hovered===p.id?"rgba(201,168,76,0.04)":"rgba(245,240,235,0.015)",transition:"all 0.35s cubic-bezier(.2,.8,.2,1)",transform:hovered===p.id?"translateY(-4px)":"translateY(0)",boxShadow:hovered===p.id?"0 18px 44px rgba(0,0,0,0.45)":"0 1px 2px rgba(0,0,0,0.2)"}}>
           <ProductImage brand={p.brand} articleId={p.id} photo={p.photo} hovered={hovered===p.id} style={{height:220}} />
-          {p.verification_score&&<div style={{position:"relative",marginTop:-32,marginRight:12,textAlign:"right",zIndex:2}}><span style={{padding:"4px 10px",background:"rgba(12,10,9,0.85)",border:"1px solid rgba(93,202,165,0.3)",fontSize:10,color:"#5DCAA5",letterSpacing:1}}>VÉRIFIÉ {p.verification_score.toFixed(2)}</span></div>}
+          {(()=>{const b=verifBadge(p.verification_status,p.verification_score);return b&&<div style={{position:"relative",marginTop:-32,marginRight:12,textAlign:"right",zIndex:2}}><span style={{padding:"4px 10px",background:"rgba(20,17,16,0.9)",border:`1px solid ${b.border}`,fontSize:10,color:b.color,letterSpacing:1}}>{b.label}</span></div>;})()}
           <div style={{padding:"12px 20px 16px"}}>
             <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1,marginBottom:4}}>{p.brand}</div>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,marginBottom:8}}>{p.title}</div>
@@ -601,7 +628,7 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
           <ProductImage brand={article.brand} articleId={article.id} photo={article.photo} style={{aspectRatio:"1",marginBottom:12}} />
         </div>
         <div>
-          {article.verification_score&&<span style={{padding:"4px 10px",background:"rgba(93,202,165,0.1)",border:"1px solid rgba(93,202,165,0.3)",fontSize:10,color:"#5DCAA5",letterSpacing:1}}>VÉRIFIÉ IA — {article.verification_score.toFixed(2)}</span>}
+          {(()=>{const b=verifBadge(article.verification_status,article.verification_score);return b&&<span style={{padding:"4px 10px",background:b.bg,border:`1px solid ${b.border}`,fontSize:10,color:b.color,letterSpacing:1}}>{b.label}</span>;})()}
           <div style={{fontSize:12,color:"#C9A84C",letterSpacing:2,marginTop:16,marginBottom:4}}>{article.brand}</div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400,marginBottom:8}}>{article.title}</h1>
           <p style={{fontSize:13,color:"rgba(245,240,235,0.45)",lineHeight:1.6,marginBottom:24}}>{article.description}</p>
@@ -688,14 +715,27 @@ function OwnerDashboard({setScreen,user,showToast}){
   const [articles,setArticles]=useState([]);
   const [transactions,setTransactions]=useState([]);
 
-  useEffect(()=>{
+  const loadArticles = () => {
     if(!user) return;
-    api(`/users/${user.id}/dashboard`).then(setDashboard).catch(()=>{});
     api(`/articles/?verified_only=false&limit=50`).then(arts=>{
       setArticles(arts.filter(a=>a.owner_id===user.id));
     }).catch(()=>{});
+  };
+
+  useEffect(()=>{
+    if(!user) return;
+    api(`/users/${user.id}/dashboard`).then(setDashboard).catch(()=>{});
+    loadArticles();
     api(`/transactions/user/${user.id}?role=owner`).then(setTransactions).catch(()=>setTransactions([]));
   },[user]);
+
+  const expertValidate = async (articleId) => {
+    try {
+      await api(`/verification/${articleId}/expert-validate`,{method:"POST"});
+      showToast && showToast("✓ Article validé par l'expert");
+      loadArticles();
+    } catch(e){ showToast && showToast("✗ "+e.message); }
+  };
 
   const totalRevenue = transactions.reduce((s,t)=>s+(t.total||0),0);
   const activeRentals = transactions.filter(t=>t.status==="active"||t.status==="confirmed").length;
@@ -738,8 +778,14 @@ function OwnerDashboard({setScreen,user,showToast}){
             <div style={{fontSize:12,color:"rgba(245,240,235,0.4)"}}>{a.price_per_day}€/jour · {a.condition}</div>
           </div>
           <div style={{textAlign:"right"}}>
-            <span style={{padding:"4px 10px",fontSize:10,letterSpacing:1,border:"1px solid",borderColor:a.is_available?"rgba(93,202,165,0.3)":"rgba(239,159,39,0.3)",color:a.is_available?"#5DCAA5":"#EF9F27"}}>{a.is_available?"DISPONIBLE":"LOUÉ"}</span>
+            {(()=>{
+              const st=a.verification_status;
+              const label=a.is_available?"DISPONIBLE":st==="review"?"EN EXAMEN":st==="rejected"?"REJETÉ":"INDISPONIBLE";
+              const col=a.is_available?"#5DCAA5":st==="rejected"?"#E08585":"#EF9F27";
+              return <span style={{padding:"4px 10px",fontSize:10,letterSpacing:1,border:"1px solid",borderColor:col,color:col,opacity:0.95}}>{label}</span>;
+            })()}
             {a.verification_score&&<div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginTop:6}}>Score IA : {a.verification_score.toFixed(2)}</div>}
+            {a.verification_status==="review"&&!a.is_available&&<button onClick={()=>expertValidate(a.id)} style={{marginTop:8,fontSize:10,letterSpacing:1,padding:"6px 12px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>VALIDER (EXPERT)</button>}
           </div>
         </div>)}
       </div>
@@ -1053,7 +1099,7 @@ function App(){
     {screen!==SCREENS.AUTH&&<Nav screen={screen} setScreen={setScreen} user={user} onLogout={handleLogout}/>}
     {screen===SCREENS.LANDING&&<Landing setScreen={setScreen} articles={articles} stats={stats}/>}
     {screen===SCREENS.OWNER_VERIFY&&<OwnerVerify setScreen={setScreen} setVerifResult={setVerifResult} showToast={showToast} user={user}/>}
-    {screen===SCREENS.OWNER_RESULT&&<OwnerResult setScreen={setScreen} verifResult={verifResult}/>}
+    {screen===SCREENS.OWNER_RESULT&&<OwnerResult setScreen={setScreen} verifResult={verifResult} showToast={showToast}/>}
     {screen===SCREENS.OWNER_DASHBOARD&&<OwnerDashboard setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_BROWSE&&<RenterBrowse setScreen={setScreen} articles={articles} setSelectedArticle={setSelectedArticle}/>}
     {screen===SCREENS.RENTER_DETAIL&&<RenterDetail setScreen={setScreen} article={selectedArticle} showToast={showToast} user={user} setTxData={setTxData}/>}
