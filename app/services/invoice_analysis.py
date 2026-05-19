@@ -190,6 +190,7 @@ BRAND_INVOICE_PATTERNS = {
     "Dior":          r"\b\d{2}-[A-Z]{2}-\d{4}\b",    # ex: 05-BO-0145
     "Prada":         r"\b\d[A-Z]{2}\d{3}\b",         # ex: 1BA204
     "Burberry":      r"\b[A-Z]{2}\d{6,8}\b",
+    "Tommy Hilfiger": r"\b[A-Z]{2}\d{6,9}\b",   # ex: TH12345678
 }
 
 # Boutiques officielles connues (extrait — en production : store locator scrapé).
@@ -197,6 +198,7 @@ OFFICIAL_BOUTIQUES = {
     "louis vuitton", "hermès", "hermes", "chanel", "gucci", "rolex",
     "cartier", "dior", "prada", "burberry", "galeries lafayette",
     "le bon marché", "printemps", "24 sèvres", "fauré le page",
+    "tommy hilfiger", "tommy",
 }
 
 

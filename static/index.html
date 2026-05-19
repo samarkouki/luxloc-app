@@ -10,13 +10,63 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{background:#0C0A09;font-family:'DM Sans',sans-serif}
-    select,input,button{font-family:'DM Sans',sans-serif}
-    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0C0A09}::-webkit-scrollbar-thumb{background:#C9A84C;border-radius:3px}
+    html{scroll-behavior:smooth}
+    body{
+      background:#141110;
+      font-family:'DM Sans',sans-serif;
+      color:#F5F0EB;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      text-rendering:optimizeLegibility;
+    }
+    /* Profondeur ambiante — halos chauds discrets, l'app n'est plus plate */
+    body::before{
+      content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(1100px circle at 8% -5%, rgba(201,168,76,0.055), transparent 55%),
+        radial-gradient(900px circle at 105% 105%, rgba(109,46,70,0.07), transparent 55%);
+    }
+    #root{position:relative;z-index:1;animation:appfade .8s ease-out}
+    @keyframes appfade{from{opacity:0}to{opacity:1}}
+
+    select,input,button,textarea{font-family:'DM Sans',sans-serif}
+
+    /* Transitions fluides sur tous les éléments interactifs */
+    button{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease,background .25s ease,opacity .2s ease,border-color .25s ease,color .2s ease}
+    button:not(:disabled):hover{transform:translateY(-1px)}
+    button:not(:disabled):active{transform:translateY(0) scale(.99)}
+
+    input,select,textarea{transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
+    input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(201,168,76,0.12)}
+
+    img{transition:opacity .45s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
+    a{transition:color .2s ease}
+
+    /* Scrollbar raffinée */
+    ::-webkit-scrollbar{width:9px}
+    ::-webkit-scrollbar-track{background:#141110}
+    ::-webkit-scrollbar-thumb{background:linear-gradient(#C9A84C,#8f7531);border-radius:5px;border:2px solid #141110}
+    ::-webkit-scrollbar-thumb:hover{background:#C9A84C}
+    ::selection{background:rgba(201,168,76,0.28);color:#F8F4F0}
+
     @keyframes spin{to{transform:rotate(360deg)}}
-    .toast{position:fixed;bottom:20px;right:20px;padding:14px 24px;background:#1A1520;border:1px solid rgba(201,168,76,0.3);color:#C9A84C;font-size:13px;z-index:999;border-radius:4px;animation:slideIn 0.3s ease-out}
-    @keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
-    .api-badge{display:inline-block;padding:2px 8px;background:rgba(45,106,79,0.15);border:1px solid rgba(93,202,165,0.3);color:#5DCAA5;font-size:9px;letter-spacing:1px;margin-left:8px;font-weight:600}
+    @keyframes slideIn{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+    .toast{
+      position:fixed;bottom:24px;right:24px;padding:15px 26px;
+      background:rgba(28,24,21,0.96);backdrop-filter:blur(14px);
+      border:1px solid rgba(201,168,76,0.35);color:#C9A84C;font-size:13px;
+      z-index:999;border-radius:12px;
+      box-shadow:0 16px 48px rgba(0,0,0,0.55);
+      animation:slideIn .4s cubic-bezier(.2,.8,.2,1);
+    }
+    .api-badge{
+      display:inline-block;padding:3px 9px;
+      background:rgba(45,106,79,0.18);border:1px solid rgba(93,202,165,0.35);
+      color:#5DCAA5;font-size:9px;letter-spacing:1px;margin-left:8px;
+      font-weight:600;border-radius:5px;
+    }
   </style>
 </head>
 <body>
@@ -86,7 +136,7 @@ function AuthScreen({onLogin, showToast}) {
     setLoading(false);
   };
 
-  return <div style={{background:"#0C0A09",minHeight:"100vh",color:"#F5F0EB",display:"flex",alignItems:"center",justifyContent:"center"}}>
+  return <div style={{background:"#141110",minHeight:"100vh",color:"#F5F0EB",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <div style={{position:"absolute",top:-120,right:-120,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.06) 0%,transparent 70%)"}}/>
     <div style={{width:420,padding:0}}>
       {/* Logo */}
@@ -117,7 +167,7 @@ function AuthScreen({onLogin, showToast}) {
 
         <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Mot de passe</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
 
-        <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading||!email||!password} style={{padding:"14px 0",border:"none",background:email&&password?"#C9A84C":"rgba(245,240,235,0.08)",color:email&&password?"#0C0A09":"rgba(245,240,235,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email&&password?"pointer":"default",marginTop:8}}>{loading?"Chargement...":(mode==="login"?"SE CONNECTER":"CRÉER MON COMPTE")}</button>
+        <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading||!email||!password} style={{padding:"14px 0",border:"none",background:email&&password?"#C9A84C":"rgba(245,240,235,0.08)",color:email&&password?"#141110":"rgba(245,240,235,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email&&password?"pointer":"default",marginTop:8}}>{loading?"Chargement...":(mode==="login"?"SE CONNECTER":"CRÉER MON COMPTE")}</button>
 
         {/* Separator */}
         <div style={{display:"flex",alignItems:"center",gap:12,margin:"8px 0"}}>
@@ -173,7 +223,7 @@ function Landing({setScreen,articles,stats}){
   const [loaded,setLoaded]=useState(false);
   useEffect(()=>{setTimeout(()=>setLoaded(true),100)},[]);
 
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <section style={{position:"relative",overflow:"hidden",padding:"clamp(40px,8vw,100px) clamp(16px,4vw,48px) clamp(30px,6vw,80px)",display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",minHeight:480}}>
       <div style={{position:"absolute",top:-120,right:-120,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.06) 0%,transparent 70%)"}}/>
       <div style={{opacity:loaded?1:0,transform:loaded?"translateY(0)":"translateY(30px)",transition:"all 0.8s cubic-bezier(0.16,1,0.3,1)"}}>
@@ -181,7 +231,7 @@ function Landing({setScreen,articles,stats}){
         <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(32px,4vw,56px)",fontWeight:400,lineHeight:1.15,marginBottom:20}}>Le luxe n'est plus<br/>une question de<br/><span style={{fontStyle:"italic",color:"#C9A84C"}}>possession</span></h1>
         <p style={{fontSize:15,lineHeight:1.7,color:"rgba(245,240,235,0.55)",maxWidth:420,marginBottom:32}}>Accédez aux plus belles pièces du monde ou rentabilisez votre collection. Chaque article est vérifié par notre système d'authentification avancé.</p>
         <div style={{display:"flex",gap:12}}>
-          <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"none",background:"#C9A84C",color:"#0C0A09",cursor:"pointer",fontWeight:600}}>EXPLORER LE CATALOGUE</button>
+          <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>EXPLORER LE CATALOGUE</button>
           <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"1px solid rgba(201,168,76,0.4)",background:"transparent",color:"#C9A84C",cursor:"pointer"}}>METTRE EN LOCATION</button>
         </div>
       </div>
@@ -226,7 +276,7 @@ function Landing({setScreen,articles,stats}){
 
     <section style={{padding:"48px clamp(16px,4vw,48px)",borderTop:"1px solid rgba(201,168,76,0.08)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:"rgba(201,168,76,0.08)"}}>
       {[{v:stats.articles||0,l:"Articles disponibles"},{v:"99.1%",l:"Taux d'authentification"},{v:"< 15s",l:"Analyse par article"},{v:"4.9/5",l:"Satisfaction locataires"}].map((s,i)=>
-        <div key={i} style={{padding:"28px 24px",textAlign:"center",background:"#0C0A09"}}>
+        <div key={i} style={{padding:"28px 24px",textAlign:"center",background:"#141110"}}>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:"#C9A84C",marginBottom:6}}>{s.v}</div>
           <div style={{fontSize:11,color:"rgba(245,240,235,0.4)",letterSpacing:1}}>{s.l}</div>
         </div>
@@ -323,7 +373,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   const photoLabels=["Vue d'ensemble","Logo / Marque","Étiquette intérieure","Coutures & finitions"];
   const nbPhotos = photos.filter(Boolean).length;
 
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{marginBottom:40}}>
         <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PROPRIÉTAIRE — VÉRIFICATION<span className="api-badge">CONNECTÉ API</span></div>
@@ -345,7 +395,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
           <div><label style={{fontSize:12,color:"rgba(245,240,235,0.5)",display:"block",marginBottom:8}}>Modèle</label><input value={model} onChange={e=>setModel(e.target.value)} placeholder="ex: Speedy 25" style={{width:"100%",padding:"14px 16px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box"}}/></div>
           <div><label style={{fontSize:12,color:"rgba(245,240,235,0.5)",display:"block",marginBottom:8}}>Prix / jour (€)</label><input value={price} onChange={e=>setPrice(e.target.value)} placeholder="ex: 85" style={{width:"100%",padding:"14px 16px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box"}}/></div>
         </div>
-        <button onClick={createArticle} disabled={!cat||!brand} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:cat&&brand?"#C9A84C":"rgba(245,240,235,0.08)",color:cat&&brand?"#0C0A09":"rgba(245,240,235,0.25)",cursor:cat&&brand?"pointer":"default",fontWeight:600}}>SUIVANT — DOCUMENTS →</button>
+        <button onClick={createArticle} disabled={!cat||!brand} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:cat&&brand?"#C9A84C":"rgba(245,240,235,0.08)",color:cat&&brand?"#141110":"rgba(245,240,235,0.25)",cursor:cat&&brand?"pointer":"default",fontWeight:600}}>SUIVANT — DOCUMENTS →</button>
       </div>}
 
       {/* STEP 1 — Pièce d'identité + Facture */}
@@ -380,7 +430,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
           </div>}
         </div>
 
-        <button onClick={()=>setStep(2)} disabled={!idDoc||!invoice} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:idDoc&&invoice?"#C9A84C":"rgba(245,240,235,0.08)",color:idDoc&&invoice?"#0C0A09":"rgba(245,240,235,0.25)",cursor:idDoc&&invoice?"pointer":"default",fontWeight:600}}>SUIVANT — PHOTOS ARTICLE →</button>
+        <button onClick={()=>setStep(2)} disabled={!idDoc||!invoice} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:idDoc&&invoice?"#C9A84C":"rgba(245,240,235,0.08)",color:idDoc&&invoice?"#141110":"rgba(245,240,235,0.25)",cursor:idDoc&&invoice?"pointer":"default",fontWeight:600}}>SUIVANT — PHOTOS ARTICLE →</button>
       </div>}
 
       {/* STEP 2 — Photos de l'article */}
@@ -400,7 +450,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
           </div>)}
         </div>
         <div style={{fontSize:11,color:nbPhotos>=3?"#5DCAA5":"rgba(245,240,235,0.3)",marginBottom:12,textAlign:"center"}}>{nbPhotos}/4 photos ajoutées {nbPhotos>=3?"— prêt pour l'analyse":""}</div>
-        <button onClick={()=>{uploadPhotosAndDocs().then(()=>{setStep(3);startAnalysis();});}} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(245,240,235,0.08)",color:nbPhotos>=3?"#0C0A09":"rgba(245,240,235,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
+        <button onClick={()=>{uploadPhotosAndDocs().then(()=>{setStep(3);startAnalysis();});}} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(245,240,235,0.08)",color:nbPhotos>=3?"#141110":"rgba(245,240,235,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
       </div>}
 
       {/* STEP 3 — Analyse */}
@@ -423,9 +473,10 @@ function OwnerResult({setScreen,verifResult}){
   useEffect(()=>{setTimeout(()=>setLoaded(true),200)},[]);
   if(!verifResult) return null;
   const sc=verifResult.scores;
-  const scores=[{label:"Logo & monogramme",score:sc.logo},{label:"Coutures & finitions",score:sc.stitching},{label:"Texture matériaux",score:sc.texture},{label:"Étiquette & série",score:sc.label},{label:"Règles métier",score:sc.rules}];
+  const scores=[{label:"Modèle IA (authenticité)",score:sc.cnn},{label:"Logo & monogramme",score:sc.logo},{label:"Coutures & finitions",score:sc.stitching},{label:"Texture matériaux",score:sc.texture},{label:"Étiquette & série",score:sc.label},{label:"Règles métier",score:sc.rules},{label:"Facture d'achat",score:sc.invoice}];
+  const brandSig=verifResult.analysis&&verifResult.analysis.signature_marque;
 
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{textAlign:"center",marginBottom:48,opacity:loaded?1:0,transform:loaded?"translateY(0)":"translateY(20px)",transition:"all 0.6s"}}>
         <div style={{width:100,height:100,borderRadius:"50%",margin:"0 auto 24px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:36,color:"#5DCAA5"}}>✓</span></div>
@@ -441,9 +492,20 @@ function OwnerResult({setScreen,verifResult}){
           <span style={{fontSize:14,fontWeight:600,color,minWidth:36,textAlign:"right"}}>{v.toFixed(2)}</span>
         </div>})}
       </div>
+      {brandSig && <div style={{border:"1px solid rgba(201,168,76,0.25)",padding:24,marginBottom:24,background:"rgba(201,168,76,0.03)"}}>
+        <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:14}}>SIGNATURE DE MARQUE — ANALYSE COULEUR</div>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:12}}>
+          <span style={{fontSize:28,fontFamily:"'Playfair Display',serif",color:brandSig.score>=0.75?"#5DCAA5":brandSig.score>=0.5?"#C9A84C":"#EF9F27"}}>{brandSig.score.toFixed(2)}</span>
+          <span style={{fontSize:13,color:"rgba(245,240,235,0.65)"}}>{brandSig.verdict}</span>
+        </div>
+        <div style={{display:"flex",gap:20,fontSize:11,color:"rgba(245,240,235,0.45)"}}>
+          {brandSig.details.justesse_rouge!==undefined&&<span>Justesse rouge : {brandSig.details.justesse_rouge}</span>}
+          {brandSig.details.justesse_marine!==undefined&&<span>Justesse marine : {brandSig.details.justesse_marine}</span>}
+        </div>
+      </div>}
       <div style={{display:"flex",gap:12}}>
         <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(245,240,235,0.15)",background:"transparent",color:"#F5F0EB",cursor:"pointer"}}>VOIR LE CATALOGUE</button>
-        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#0C0A09",cursor:"pointer",fontWeight:600}}>PUBLIER L'ANNONCE →</button>
+        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>PUBLIER L'ANNONCE →</button>
       </div>
     </div>
   </div>
@@ -463,6 +525,7 @@ const BRAND_VISUALS = {
   "Chanel": {bg:"linear-gradient(145deg,#1A1A1A 0%,#333333 50%,#C9A84C 100%)",pattern:"CC",emoji:"👜"},
   "Prada": {bg:"linear-gradient(145deg,#1A1A1A 0%,#2D2D2D 50%,#4A4A4A 100%)",pattern:"P",emoji:"👜"},
   "Dior": {bg:"linear-gradient(145deg,#E8E0D0 0%,#C4B89C 50%,#8B7D5E 100%)",pattern:"CD",emoji:"👜"},
+  "Tommy Hilfiger": {bg:"linear-gradient(145deg,#001F5C 0%,#FFFFFF 50%,#C8102E 100%)",pattern:"TH",emoji:"👜"},
 };
 function getBrandVisual(brand) { return BRAND_VISUALS[brand] || {bg:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",pattern:brand?brand.substring(0,2):"?",emoji:"✦"}; }
 function ProductImage({brand,articleId,photo,hovered,style}) {
@@ -470,7 +533,7 @@ function ProductImage({brand,articleId,photo,hovered,style}) {
   // Priorité : photo renvoyée par le backend, puis cache mémoire local, puis visuel de marque
   const uploadedImg = photo || (window._luxlocPhotos && window._luxlocPhotos[articleId]);
   return <div style={{...style,background:v.bg,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all 0.4s",overflow:"hidden"}}>
-    {uploadedImg ? <img src={uploadedImg} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:hovered?0.9:0.8,transition:"opacity 0.3s"}}/>
+    {uploadedImg ? <img src={uploadedImg} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:hovered?1:0.85,transform:hovered?"scale(1.06)":"scale(1)",transition:"opacity .4s ease,transform .6s cubic-bezier(.2,.8,.2,1)"}}/>
     : <>
       <div style={{position:"absolute",inset:0,opacity:0.08,background:"repeating-linear-gradient(45deg,transparent,transparent 35px,rgba(255,255,255,0.05) 35px,rgba(255,255,255,0.05) 70px)"}}/>
       <div style={{textAlign:"center",zIndex:1}}>
@@ -486,7 +549,7 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
   const [hovered,setHovered]=useState(null);
   const filtered=filter==="all"?articles:articles.filter(p=>p.category===filter);
 
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{padding:"40px clamp(16px,4vw,48px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
         <div><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>LOCATAIRE<span className="api-badge">GET /articles</span></div><h1 style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:400}}>Catalogue</h1></div>
@@ -495,7 +558,7 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
-        {filtered.map(p=><div key={p.id} onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)} onClick={()=>{setSelectedArticle(p);setScreen(SCREENS.RENTER_DETAIL);}} style={{cursor:"pointer",border:"1px solid rgba(245,240,235,0.06)",background:hovered===p.id?"rgba(245,240,235,0.02)":"transparent",transition:"all 0.3s"}}>
+        {filtered.map(p=><div key={p.id} onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)} onClick={()=>{setSelectedArticle(p);setScreen(SCREENS.RENTER_DETAIL);}} style={{cursor:"pointer",border:`1px solid ${hovered===p.id?"rgba(201,168,76,0.35)":"rgba(245,240,235,0.07)"}`,background:hovered===p.id?"rgba(201,168,76,0.04)":"rgba(245,240,235,0.015)",transition:"all 0.35s cubic-bezier(.2,.8,.2,1)",transform:hovered===p.id?"translateY(-4px)":"translateY(0)",boxShadow:hovered===p.id?"0 18px 44px rgba(0,0,0,0.45)":"0 1px 2px rgba(0,0,0,0.2)"}}>
           <ProductImage brand={p.brand} articleId={p.id} photo={p.photo} hovered={hovered===p.id} style={{height:220}} />
           {p.verification_score&&<div style={{position:"relative",marginTop:-32,marginRight:12,textAlign:"right",zIndex:2}}><span style={{padding:"4px 10px",background:"rgba(12,10,9,0.85)",border:"1px solid rgba(93,202,165,0.3)",fontSize:10,color:"#5DCAA5",letterSpacing:1}}>VÉRIFIÉ {p.verification_score.toFixed(2)}</span></div>}
           <div style={{padding:"12px 20px 16px"}}>
@@ -530,7 +593,7 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
   };
 
   if(!article) return null;
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{padding:"40px clamp(16px,4vw,48px)"}}>
       <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{background:"none",border:"none",color:"rgba(245,240,235,0.4)",fontSize:12,cursor:"pointer",marginBottom:24}}>← Retour au catalogue</button>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40}}>
@@ -554,7 +617,7 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
               <div style={{display:"flex",justifyContent:"space-between",fontSize:15,padding:"12px 0 0",borderTop:"1px solid rgba(201,168,76,0.2)",fontWeight:600}}><span style={{color:"#C9A84C"}}>Total</span><span style={{color:"#C9A84C"}}>{estimate.total}€</span></div>
             </>}
           </div>
-          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#0C0A09",cursor:"pointer",fontWeight:600}}>RÉSERVER VIA API →</button>
+          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>RÉSERVER VIA API →</button>
           <p style={{fontSize:11,color:"rgba(245,240,235,0.3)",textAlign:"center",marginTop:12}}>POST /api/v1/transactions/ — Paiement sécurisé</p>
         </div>
       </div>
@@ -578,7 +641,7 @@ function RenterReturn({setScreen,showToast}){
 
   useEffect(()=>{ if(Object.keys(conditions).length===4) submitReturn(); },[Object.keys(conditions).length]);
 
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>LOCATAIRE — RETOUR<span className="api-badge">POST /returns</span></div>
       <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:400,marginBottom:32}}>Retour de l'article</h1>
@@ -613,7 +676,7 @@ function RenterReturn({setScreen,showToast}){
 
       <div style={{display:"flex",gap:12}}>
         <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(245,240,235,0.15)",background:"transparent",color:"#F5F0EB",cursor:"pointer"}}>RETOUR CATALOGUE</button>
-        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#0C0A09",cursor:"pointer",fontWeight:600}}>TERMINER</button>
+        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>TERMINER</button>
       </div>
     </div>
   </div>
@@ -637,7 +700,7 @@ function OwnerDashboard({setScreen,user,showToast}){
   const totalRevenue = transactions.reduce((s,t)=>s+(t.total||0),0);
   const activeRentals = transactions.filter(t=>t.status==="active"||t.status==="confirmed").length;
 
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{maxWidth:900,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:40}}>
         <div>
@@ -664,7 +727,7 @@ function OwnerDashboard({setScreen,user,showToast}){
       <div style={{marginBottom:40}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:400}}>Mes articles</h2>
-          <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:12,letterSpacing:1,padding:"10px 24px",border:"none",background:"#C9A84C",color:"#0C0A09",cursor:"pointer",fontWeight:600}}>+ AJOUTER UN ARTICLE</button>
+          <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:12,letterSpacing:1,padding:"10px 24px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>+ AJOUTER UN ARTICLE</button>
         </div>
         {articles.length===0?<div style={{padding:40,border:"1px dashed rgba(245,240,235,0.1)",textAlign:"center",color:"rgba(245,240,235,0.3)"}}>Aucun article déposé. Commencez par ajouter un article.</div>
         :articles.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:20,padding:16,border:"1px solid rgba(245,240,235,0.06)",marginBottom:8}}>
@@ -728,7 +791,7 @@ function RenterPayment({setScreen,article,txData,showToast}){
   };
 
   if(!article||!txData) return null;
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{maxWidth:600,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PAIEMENT SÉCURISÉ</div>
       <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400,marginBottom:32}}>Finaliser la réservation</h1>
@@ -771,7 +834,7 @@ function RenterPayment({setScreen,article,txData,showToast}){
         </div>
       </div>
 
-      <button onClick={processPayment} disabled={paying||cardNum.length<19} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:cardNum.length>=19?"#C9A84C":"rgba(245,240,235,0.08)",color:cardNum.length>=19?"#0C0A09":"rgba(245,240,235,0.25)",cursor:cardNum.length>=19?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours...":"PAYER "+txData.summary?.total+"€ — STRIPE SÉCURISÉ"}</button>
+      <button onClick={processPayment} disabled={paying||cardNum.length<19} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:cardNum.length>=19?"#C9A84C":"rgba(245,240,235,0.08)",color:cardNum.length>=19?"#141110":"rgba(245,240,235,0.25)",cursor:cardNum.length>=19?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours...":"PAYER "+txData.summary?.total+"€ — STRIPE SÉCURISÉ"}</button>
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12}}><span style={{fontSize:12}}>🔒</span><span style={{fontSize:11,color:"rgba(245,240,235,0.25)"}}>Paiement sécurisé par Stripe — Chiffrement SSL 256 bits</span></div>
       </>
       :<div style={{textAlign:"center",padding:40}}>
@@ -781,7 +844,7 @@ function RenterPayment({setScreen,article,txData,showToast}){
         <p style={{fontSize:13,color:"rgba(245,240,235,0.45)",marginBottom:24}}>Votre article sera disponible aux dates prévues. Vous recevrez un email de confirmation.</p>
         <div style={{display:"flex",gap:12,justifyContent:"center"}}>
           <button onClick={()=>setScreen(SCREENS.RENTER_PROFILE)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(245,240,235,0.15)",background:"transparent",color:"#F5F0EB",cursor:"pointer"}}>MES LOCATIONS</button>
-          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#0C0A09",cursor:"pointer",fontWeight:600}}>SIMULER LE RETOUR</button>
+          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>SIMULER LE RETOUR</button>
         </div>
       </div>}
     </div>
@@ -802,7 +865,7 @@ function RenterProfile({setScreen,user,showToast}){
   const totalSpent = transactions.reduce((s,t)=>s+(t.total||0),0);
   const getArticle = (id) => articles.find(a=>a.id===id);
 
-  return <div style={{background:"#0C0A09",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
     <div style={{maxWidth:900,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:40}}>
         <div>
@@ -842,7 +905,7 @@ function RenterProfile({setScreen,user,showToast}){
           <div style={{fontSize:16,fontWeight:600,color:"#C9A84C"}}>{t.total}€</div>
           <span style={{padding:"3px 8px",fontSize:9,letterSpacing:1,border:"1px solid",borderColor:t.status==="completed"?"rgba(93,202,165,0.3)":"rgba(201,168,76,0.3)",color:t.status==="completed"?"#5DCAA5":"#C9A84C"}}>{t.status==="completed"?"TERMINÉE":t.status==="active"?"EN COURS":t.status?.toUpperCase()}</span>
         </div>
-        {(t.status==="active"||t.status==="confirmed")&&<button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:10,letterSpacing:1,padding:"8px 16px",border:"none",background:"#C9A84C",color:"#0C0A09",cursor:"pointer",fontWeight:600}}>RETOUR</button>}
+        {(t.status==="active"||t.status==="confirmed")&&<button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:10,letterSpacing:1,padding:"8px 16px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>RETOUR</button>}
       </div>)}
 
       {/* Profile info */}

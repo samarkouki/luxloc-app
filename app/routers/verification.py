@@ -23,6 +23,7 @@ from app.schemas.schemas import VerificationRequest
 from app.models.models import Article, Verification, VerificationStatus, ArticlePhoto
 from app.services import cv_analysis as cv
 from app.services import invoice_analysis as inv
+from app.services import brand_signature as brand_sig_mod
 from app.ml import predict as ml_predict
 import time
 
@@ -87,6 +88,18 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
 
     # ═══ ÉTAPE 3 — ANALYSE MULTI-TÊTES ═══
     score_logo = cv.logo_score(logo_img) if logo_img else _fallback("logo", article)
+
+    # Étape 3a-bis — Signature de marque (ex. Tommy Hilfiger)
+    # Si la marque dispose d'un détecteur dédié, on analyse la signature
+    # couleur du logo et on la combine au score logo générique.
+    brand_sig = None
+    if logo_img is not None and brand_sig_mod.has_brand_detector(article.brand):
+        brand_sig = brand_sig_mod.brand_signature_check(logo_img, article.brand)
+        # On ne combine la signature au score logo que si elle est concluante
+        # (variante identifiée). Sinon elle reste purement informative.
+        if brand_sig and brand_sig.get("conclusif"):
+            score_logo = 0.5 * score_logo + 0.5 * brand_sig["score"]
+
     score_stitching = cv.stitching_score(stitch_img) if stitch_img else _fallback("stitching", article)
     if overview:
         score_texture, glcm = cv.texture_score(overview)
@@ -179,6 +192,7 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
                 "features_extraites": ml_result["features"],
             },
             "glcm_texture": {k: round(v, 4) for k, v in glcm.items()} if glcm else {},
+            "signature_marque": brand_sig,
             "regles_metier": rules_detail,
             "verification_facture": invoice_report,
         },
