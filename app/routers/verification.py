@@ -23,6 +23,7 @@ from app.schemas.schemas import VerificationRequest
 from app.models.models import Article, Verification, VerificationStatus, ArticlePhoto
 from app.services import cv_analysis as cv
 from app.services import invoice_analysis as inv
+from app.ml import predict as ml_predict
 import time
 
 router = APIRouter()
@@ -73,8 +74,16 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     stitch_img = images.get("stitching") or overview
     label_img = images.get("label") or overview
 
-    # ═══ ÉTAPE 2 — SCORE GLOBAL ═══
-    score_cnn = cv.global_quality_score(overview) if overview else _fallback("cnn", article)
+    # ═══ ÉTAPE 2 — SCORE GLOBAL (modèle ML entraîné) ═══
+    # Le score global est désormais produit par le Random Forest entraîné
+    # (app.ml). Si le modèle n'est pas disponible, repli heuristique.
+    if overview:
+        ml_result = ml_predict.predict_authenticity(overview)
+        score_cnn = ml_result["score"]
+    else:
+        ml_result = {"score": _fallback("cnn", article), "source": "fallback_metadata",
+                     "model_version": "fallback", "features": {}}
+        score_cnn = ml_result["score"]
 
     # ═══ ÉTAPE 3 — ANALYSE MULTI-TÊTES ═══
     score_logo = cv.logo_score(logo_img) if logo_img else _fallback("logo", article)
@@ -134,7 +143,7 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
         score_label=round(score_label, 4),
         score_rules=round(score_rules, 4),
         score_invoice=round(score_invoice, 4),
-        pipeline_version="v0.3-cv-invoice" if has_real_images else "v0.1-poc",
+        pipeline_version="v0.4-ml" if has_real_images else "v0.1-poc",
         processing_time_ms=processing_time,
         gradcam_path=f"gs://luxloc-gradcam/{article.id}/report.png",
     )
@@ -163,18 +172,57 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
             "mode": "computer_vision_reelle" if has_real_images else "fallback_metadata",
             "images_analysees": list(images.keys()),
             "controle_qualite": quality_reports,
+            "modele_ml": {
+                "score_authenticite": ml_result["score"],
+                "source": ml_result["source"],
+                "version": ml_result["model_version"],
+                "features_extraites": ml_result["features"],
+            },
             "glcm_texture": {k: round(v, 4) for k, v in glcm.items()} if glcm else {},
             "regles_metier": rules_detail,
             "verification_facture": invoice_report,
         },
         "pipeline": {
-            "version": "v0.3-cv-invoice" if has_real_images else "v0.1-poc",
+            "version": "v0.4-ml" if has_real_images else "v0.1-poc",
             "processing_time_ms": processing_time,
             "steps_completed": ["preprocessing", "global_score", "multi_head_analysis",
                                 "business_rules", "invoice_verification", "weighted_scoring"],
             "weights": WEIGHTS,
         },
         "gradcam_url": verification.gradcam_path,
+    }
+
+
+@router.get("/model/info")
+def get_model_info():
+    """
+    Renvoie la fiche du modèle ML de détection de contrefaçon :
+    métriques d'évaluation, features utilisées, importance des features.
+    Utile pour la transparence et la présentation du modèle.
+    """
+    info = ml_predict.model_info()
+    if not info:
+        return {
+            "model_disponible": False,
+            "message": "Modèle non entraîné — exécuter : python -m app.ml.train",
+        }
+    return {
+        "model_disponible": True,
+        "modele": info["model"],
+        "jeu_de_donnees": {
+            "taille_totale": info["dataset_size"],
+            "entrainement": info["train_size"],
+            "test": info["test_size"],
+        },
+        "metriques": {
+            "accuracy": info["accuracy"],
+            "precision": info["precision"],
+            "recall": info["recall"],
+            "f1_score": info["f1_score"],
+            "f1_validation_croisee": f"{info['cv_f1_mean']} (+/- {info['cv_f1_std']})",
+        },
+        "matrice_confusion": info["confusion_matrix"],
+        "importance_features": info["feature_importances"],
     }
 
 
