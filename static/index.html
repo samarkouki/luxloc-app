@@ -319,38 +319,56 @@ function ScrollProgress() {
   </div>;
 }
 
-// ═══ LOGO LUXLOC — emblème gemme facettée, signature unique ═══
+// ═══ LOGO LUXLOC — gemme taille brillant, vraie silhouette de diamant ═══
 function LuxlocLogo({size=36, showWordmark=true, wordmarkSize=18, tagline=null, color="#C9A84C", onClick}) {
   const [hover, setHover] = useState(false);
   return <div onClick={onClick} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)} style={{cursor:onClick?"pointer":"default",display:"flex",alignItems:"center",gap:size*0.38}}>
     <div style={{position:"relative",width:size,height:size,flexShrink:0}}>
-      {/* Halo doré subtil derrière la gemme, qui s'intensifie au survol */}
-      <div style={{position:"absolute",inset:-size*0.15,borderRadius:"50%",background:`radial-gradient(circle, ${color}33 0%, transparent 65%)`,opacity:hover?1:0.4,transition:"opacity .5s ease",pointerEvents:"none"}}/>
+      {/* Halo doré subtil derrière la gemme */}
+      <div style={{position:"absolute",inset:-size*0.18,borderRadius:"50%",background:`radial-gradient(circle, ${color}40 0%, transparent 60%)`,opacity:hover?1:0.45,transition:"opacity .5s ease",pointerEvents:"none"}}/>
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{position:"relative",transition:"transform .8s cubic-bezier(.2,.8,.2,1)",transform:hover?"rotateY(360deg)":"rotateY(0)",transformStyle:"preserve-3d"}}>
-        {/* Silhouette de gemme — taille brillant moderne, vertical */}
-        <path d="M32 5 L54 22 L48 53 L32 60 L16 53 L10 22 Z" stroke={color} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round"/>
-        {/* Table de la gemme — facette horizontale supérieure */}
-        <path d="M10 22 L32 30 L54 22" stroke={color} strokeWidth="1.1" opacity="0.85"/>
-        {/* Lignes de facettes — créent l'effet 3D de cristal taillé */}
-        <path d="M16 53 L32 30 L48 53" stroke={color} strokeWidth="0.6" opacity="0.5"/>
-        <path d="M10 22 L32 60 M54 22 L32 60" stroke={color} strokeWidth="0.4" opacity="0.35"/>
-        {/* Lettre L — bras vertical épais, bras horizontal court */}
-        <path d="M27 34 L27 47 L37 47" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-        {/* Point de certification au sommet — pulse en continu */}
-        <circle cx="32" cy="11" r="1.8" fill={color}>
-          <animate attributeName="opacity" values="1;0.35;1" dur="2.4s" repeatCount="indefinite"/>
-        </circle>
-        {/* Éclat lumineux qui balaie la gemme (toujours présent, plus visible au survol) */}
+        {/* ─── SILHOUETTE DE LA GEMME (taille brillant) ─── */}
+        {/* Une vraie forme de diamant : table large en haut, couronne, ceinture, culasse pointue */}
+        {/* Table (facette plate supérieure) : 16,10 → 48,10 */}
+        {/* Couronne descend vers la ceinture : 16,10 → 6,26 et 48,10 → 58,26 */}
+        {/* Culasse descend en pointe : 6,26 → 32,58 → 58,26 */}
+        <path d="M 16 10 L 48 10 L 58 26 L 32 58 L 6 26 Z" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+
+        {/* ─── LIGNE DE CEINTURE (girdle) horizontale, plus épaisse ─── */}
+        <path d="M 6 26 L 58 26" stroke={color} strokeWidth="1.2"/>
+
+        {/* ─── FACETTES DE LA COURONNE (entre table et ceinture) ─── */}
+        {/* Lignes des coins de la table descendant vers le centre de la ceinture */}
+        <path d="M 16 10 L 32 26" stroke={color} strokeWidth="0.7" opacity="0.65"/>
+        <path d="M 48 10 L 32 26" stroke={color} strokeWidth="0.7" opacity="0.65"/>
+
+        {/* ─── FACETTES DE LA CULASSE (entre ceinture et pointe) ─── */}
+        {/* Lignes principales descendant vers la pointe */}
+        <path d="M 6 26 L 32 58" stroke={color} strokeWidth="0.7" opacity="0.55"/>
+        <path d="M 58 26 L 32 58" stroke={color} strokeWidth="0.7" opacity="0.55"/>
+        <path d="M 19 26 L 32 58" stroke={color} strokeWidth="0.5" opacity="0.4"/>
+        <path d="M 45 26 L 32 58" stroke={color} strokeWidth="0.5" opacity="0.4"/>
+        <path d="M 32 26 L 32 58" stroke={color} strokeWidth="0.5" opacity="0.4"/>
+
+        {/* ─── LETTRE L AU CENTRE DE LA TABLE, fine et élégante ─── */}
+        <path d="M 28 14 L 28 22 L 36 22" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+
+        {/* ─── ÉCLAT lumineux qui balaye la gemme (toujours actif, plus visible au survol) ─── */}
         <defs>
-          <linearGradient id="shimmer" x1="0" y1="0" x2="1" y2="0">
+          <linearGradient id="shimmer" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0"/>
-            <stop offset="50%" stopColor={color} stopOpacity={hover?0.5:0.22}/>
+            <stop offset="50%" stopColor={color} stopOpacity={hover?0.55:0.22}/>
             <stop offset="100%" stopColor={color} stopOpacity="0"/>
           </linearGradient>
         </defs>
-        <path d="M32 5 L54 22 L48 53 L32 60 L16 53 L10 22 Z" fill="url(#shimmer)">
+        <path d="M 16 10 L 48 10 L 58 26 L 32 58 L 6 26 Z" fill="url(#shimmer)">
           <animate attributeName="opacity" values="0;1;0" dur="3.5s" repeatCount="indefinite"/>
         </path>
+
+        {/* ─── POINT DE LUMIÈRE pulsant au-dessus de la table ─── */}
+        <circle cx="32" cy="5" r="1.5" fill={color}>
+          <animate attributeName="opacity" values="1;0.3;1" dur="2.4s" repeatCount="indefinite"/>
+        </circle>
       </svg>
     </div>
     {showWordmark && <div style={{display:"flex",flexDirection:"column",lineHeight:1}}>

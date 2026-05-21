@@ -7,3 +7,4 @@ pillow
 numpy
 scikit-learn
 joblib
+psycopg2-binary
