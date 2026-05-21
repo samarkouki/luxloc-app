@@ -345,3 +345,42 @@ def seed_demo_data():
         }
     finally:
         db.close()
+
+
+@app.post("/api/v1/reset-and-seed", tags=["Root"])
+def reset_and_seed(confirm: str = ""):
+    """
+    Vide TOUTES les tables de la base puis relance le seed enrichi.
+
+    À utiliser quand le seed normal ne se déclenche plus (parce que des
+    données précédentes existent). Action destructive : tous les comptes
+    utilisateurs et articles créés à la main sont supprimés.
+
+    Pour exécuter, passer le paramètre `?confirm=yes` (sécurité contre
+    les déclenchements accidentels).
+    """
+    if confirm != "yes":
+        return {
+            "message": "Confirmation requise. Pour effacer la base et relancer le seed, ajoutez ?confirm=yes à l'URL.",
+            "exemple": "POST /api/v1/reset-and-seed?confirm=yes",
+            "attention": "Cette action est DESTRUCTIVE — toutes les donnees seront effacees.",
+        }
+
+    db = SessionLocal()
+    try:
+        # Ordre de suppression respectant les clés étrangères
+        deleted = {}
+        for model_cls in (ReturnRecord, Transaction, Verification, ArticlePhoto, Article, User):
+            n = db.query(model_cls).delete()
+            deleted[model_cls.__tablename__] = n
+        db.commit()
+    finally:
+        db.close()
+
+    # On relance le seed normalement
+    seed_result = seed_demo_data()
+    return {
+        "message": "Base réinitialisée et seed exécuté.",
+        "lignes_supprimees": deleted,
+        "seed": seed_result,
+    }
