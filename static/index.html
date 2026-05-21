@@ -7,47 +7,47 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html{scroll-behavior:smooth}
     body{
-      background:#141110;
-      font-family:'DM Sans',sans-serif;
-      color:#F5F0EB;
+      background:#FAF8F4;
+      font-family:'Montserrat',sans-serif;
+      color:#1A1614;
       -webkit-font-smoothing:antialiased;
       -moz-osx-font-smoothing:grayscale;
       text-rendering:optimizeLegibility;
     }
-    /* Profondeur ambiante — halos chauds discrets, l'app n'est plus plate */
+    /* Profondeur ambiante — halos chauds très discrets sur fond clair */
     body::before{
       content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
       background:
-        radial-gradient(1100px circle at 8% -5%, rgba(201,168,76,0.055), transparent 55%),
-        radial-gradient(900px circle at 105% 105%, rgba(109,46,70,0.07), transparent 55%);
+        radial-gradient(1100px circle at 8% -5%, rgba(201,168,76,0.10), transparent 55%),
+        radial-gradient(900px circle at 105% 105%, rgba(109,46,70,0.06), transparent 55%);
     }
     #root{position:relative;z-index:1;animation:appfade .8s ease-out}
     @keyframes appfade{from{opacity:0}to{opacity:1}}
 
-    select,input,button,textarea{font-family:'DM Sans',sans-serif}
+    select,input,button,textarea{font-family:'Montserrat',sans-serif;color:#1A1614}
 
-    /* Transitions fluides sur tous les éléments interactifs */
+    /* Transitions fluides */
     button{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease,background .25s ease,opacity .2s ease,border-color .25s ease,color .2s ease}
     button:not(:disabled):hover{transform:translateY(-1px)}
     button:not(:disabled):active{transform:translateY(0) scale(.99)}
 
     input,select,textarea{transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
-    input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(201,168,76,0.12)}
+    input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(201,168,76,0.22)}
 
     img{transition:opacity .45s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
     a{transition:color .2s ease}
 
-    /* Scrollbar raffinée */
+    /* Scrollbar dorée raffinée sur fond clair */
     ::-webkit-scrollbar{width:9px}
-    ::-webkit-scrollbar-track{background:#141110}
-    ::-webkit-scrollbar-thumb{background:linear-gradient(#C9A84C,#8f7531);border-radius:5px;border:2px solid #141110}
+    ::-webkit-scrollbar-track{background:#F2EEE8}
+    ::-webkit-scrollbar-thumb{background:linear-gradient(#C9A84C,#8f7531);border-radius:5px;border:2px solid #F2EEE8}
     ::-webkit-scrollbar-thumb:hover{background:#C9A84C}
-    ::selection{background:rgba(201,168,76,0.28);color:#F8F4F0}
+    ::selection{background:rgba(201,168,76,0.35);color:#1A1614}
 
     @keyframes spin{to{transform:rotate(360deg)}}
     @keyframes slideIn{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -55,16 +55,16 @@
 
     .toast{
       position:fixed;bottom:24px;right:24px;padding:15px 26px;
-      background:rgba(28,24,21,0.96);backdrop-filter:blur(14px);
-      border:1px solid rgba(201,168,76,0.35);color:#C9A84C;font-size:13px;
+      background:rgba(255,255,255,0.97);backdrop-filter:blur(14px);
+      border:1px solid rgba(201,168,76,0.45);color:#8a6e26;font-size:13px;
       z-index:999;border-radius:12px;
-      box-shadow:0 16px 48px rgba(0,0,0,0.55);
+      box-shadow:0 16px 40px rgba(26,22,20,0.15);
       animation:slideIn .4s cubic-bezier(.2,.8,.2,1);
     }
     .api-badge{
       display:inline-block;padding:3px 9px;
-      background:rgba(45,106,79,0.18);border:1px solid rgba(93,202,165,0.35);
-      color:#5DCAA5;font-size:9px;letter-spacing:1px;margin-left:8px;
+      background:rgba(45,106,79,0.12);border:1px solid rgba(45,106,79,0.4);
+      color:#1f5a3d;font-size:9px;letter-spacing:1px;margin-left:8px;
       font-weight:600;border-radius:5px;
     }
   </style>
@@ -136,20 +136,20 @@ function AuthScreen({onLogin, showToast}) {
     setLoading(false);
   };
 
-  return <div style={{background:"#141110",minHeight:"100vh",color:"#F5F0EB",display:"flex",alignItems:"center",justifyContent:"center"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"100vh",color:"#1A1614",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <div style={{position:"absolute",top:-120,right:-120,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.06) 0%,transparent 70%)"}}/>
     <div style={{width:420,padding:0}}>
       {/* Logo */}
       <div style={{textAlign:"center",marginBottom:40}}>
-        <div style={{width:48,height:48,border:"2px solid #C9A84C",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><span style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#C9A84C",fontWeight:700}}>L</span></div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,letterSpacing:6,marginBottom:8}}>LUXLOC</div>
-        <div style={{fontSize:12,color:"rgba(245,240,235,0.4)",letterSpacing:2}}>PLATEFORME DE LOCATION DE LUXE</div>
+        <div style={{width:48,height:48,border:"2px solid #C9A84C",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><span style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22,color:"#C9A84C",fontWeight:700}}>L</span></div>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,letterSpacing:6,marginBottom:8}}>LUXLOC</div>
+        <div style={{fontSize:12,color:"rgba(26,22,20,0.4)",letterSpacing:2}}>PLATEFORME DE LOCATION DE LUXE</div>
       </div>
 
       {/* Tabs */}
-      <div style={{display:"flex",marginBottom:32,borderBottom:"1px solid rgba(245,240,235,0.08)"}}>
+      <div style={{display:"flex",marginBottom:32,borderBottom:"1px solid rgba(26,22,20,0.08)"}}>
         {["login","register"].map(m=>
-          <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"12px 0",background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:1,color:mode===m?"#C9A84C":"rgba(245,240,235,0.35)",borderBottom:mode===m?"2px solid #C9A84C":"2px solid transparent",transition:"all 0.2s"}}>{m==="login"?"CONNEXION":"INSCRIPTION"}</button>
+          <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"12px 0",background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:1,color:mode===m?"#C9A84C":"rgba(26,22,20,0.35)",borderBottom:mode===m?"2px solid #C9A84C":"2px solid transparent",transition:"all 0.2s"}}>{m==="login"?"CONNEXION":"INSCRIPTION"}</button>
         )}
       </div>
 
@@ -157,29 +157,29 @@ function AuthScreen({onLogin, showToast}) {
       <div style={{display:"grid",gap:16}}>
         {mode==="register"&&<>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Prénom</label><input value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="Sophie" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
-            <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Nom</label><input value={lastName} onChange={e=>setLastName(e.target.value)} placeholder="Martin" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
+            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Prénom</label><input value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="Sophie" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
+            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Nom</label><input value={lastName} onChange={e=>setLastName(e.target.value)} placeholder="Martin" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
           </div>
-          <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Téléphone</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
+          <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Téléphone</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
         </>}
 
-        <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Email</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="sophie@luxloc.fr" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
+        <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Email</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="sophie@luxloc.fr" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
 
-        <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Mot de passe</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
+        <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Mot de passe</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
 
-        <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading||!email||!password} style={{padding:"14px 0",border:"none",background:email&&password?"#C9A84C":"rgba(245,240,235,0.08)",color:email&&password?"#141110":"rgba(245,240,235,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email&&password?"pointer":"default",marginTop:8}}>{loading?"Chargement...":(mode==="login"?"SE CONNECTER":"CRÉER MON COMPTE")}</button>
+        <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading||!email||!password} style={{padding:"14px 0",border:"none",background:email&&password?"#C9A84C":"rgba(26,22,20,0.08)",color:email&&password?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email&&password?"pointer":"default",marginTop:8}}>{loading?"Chargement...":(mode==="login"?"SE CONNECTER":"CRÉER MON COMPTE")}</button>
 
         {/* Separator */}
         <div style={{display:"flex",alignItems:"center",gap:12,margin:"8px 0"}}>
-          <div style={{flex:1,height:1,background:"rgba(245,240,235,0.08)"}}/>
-          <span style={{fontSize:11,color:"rgba(245,240,235,0.25)"}}>OU</span>
-          <div style={{flex:1,height:1,background:"rgba(245,240,235,0.08)"}}/>
+          <div style={{flex:1,height:1,background:"rgba(26,22,20,0.08)"}}/>
+          <span style={{fontSize:11,color:"rgba(26,22,20,0.25)"}}>OU</span>
+          <div style={{flex:1,height:1,background:"rgba(26,22,20,0.08)"}}/>
         </div>
 
         {/* Demo login */}
         <button onClick={demoLogin} disabled={loading} style={{padding:"12px 0",border:"1px solid rgba(201,168,76,0.3)",background:"transparent",color:"#C9A84C",fontSize:12,letterSpacing:1,cursor:"pointer"}}>ACCÈS DÉMO RAPIDE (sophie@luxloc.fr)</button>
 
-        <p style={{fontSize:10,color:"rgba(245,240,235,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, les données sont stockées localement via l'API FastAPI.</p>
+        <p style={{fontSize:10,color:"rgba(26,22,20,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, les données sont stockées localement via l'API FastAPI.</p>
       </div>
     </div>
   </div>
@@ -195,22 +195,22 @@ function Toast({msg,onDone}){useEffect(()=>{const t=setTimeout(onDone,3000);retu
 
 // ═══ NAV ═══
 function Nav({screen,setScreen,user,onLogout}){
-  return <nav style={{position:"sticky",top:0,zIndex:50,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 clamp(16px,4vw,48px)",height:64,background:"rgba(12,10,9,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(201,168,76,0.12)"}}>
+  return <nav style={{position:"sticky",top:0,zIndex:50,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 clamp(16px,4vw,48px)",height:64,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(201,168,76,0.12)"}}>
     <div style={{display:"flex",alignItems:"center",gap:28}}>
       <div onClick={()=>setScreen(SCREENS.LANDING)} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
-        <div style={{width:28,height:28,border:"1.5px solid #C9A84C",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Playfair Display',serif",fontSize:13,color:"#C9A84C",fontWeight:700}}>L</span></div>
-        <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:"#F5F0EB",letterSpacing:4}}>LUXLOC</span>
+        <div style={{width:28,height:28,border:"1.5px solid #C9A84C",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Montserrat',sans-serif",fontSize:13,color:"#C9A84C",fontWeight:700}}>L</span></div>
+        <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:"#1A1614",letterSpacing:4}}>LUXLOC</span>
       </div>
       <div style={{display:"flex",gap:24,marginLeft:32}}>
         {[{l:"Accueil",s:SCREENS.LANDING},{l:"Louer",s:SCREENS.RENTER_BROWSE},{l:"Mettre en location",s:SCREENS.OWNER_VERIFY},{l:"Mon espace",s:SCREENS.OWNER_DASHBOARD},{l:"Modèle IA",s:SCREENS.MODEL_IA}].map(n=>
-          <button key={n.s} onClick={()=>setScreen(n.s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:.5,color:screen===n.s?"#C9A84C":"rgba(245,240,235,0.55)",borderBottom:screen===n.s?"1px solid #C9A84C":"1px solid transparent",padding:"4px 0"}}>{n.l}</button>
+          <button key={n.s} onClick={()=>setScreen(n.s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:.5,color:screen===n.s?"#C9A84C":"rgba(26,22,20,0.55)",borderBottom:screen===n.s?"1px solid #C9A84C":"1px solid transparent",padding:"4px 0"}}>{n.l}</button>
         )}
       </div>
     </div>
     <div style={{display:"flex",alignItems:"center",gap:12}}>
-      {user && <span style={{fontSize:11,color:"rgba(245,240,235,0.4)"}}>{user.first_name} {user.last_name}</span>}
+      {user && <span style={{fontSize:11,color:"rgba(26,22,20,0.4)"}}>{user.first_name} {user.last_name}</span>}
       <div style={{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#6D2E46,#C9A84C)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:500}}>{user?user.first_name[0]+user.last_name[0]:"?"}</div>
-      <button onClick={onLogout} style={{background:"none",border:"1px solid rgba(245,240,235,0.1)",padding:"4px 12px",fontSize:10,color:"rgba(245,240,235,0.4)",cursor:"pointer",letterSpacing:1}}>DÉCONNEXION</button>
+      <button onClick={onLogout} style={{background:"none",border:"1px solid rgba(26,22,20,0.1)",padding:"4px 12px",fontSize:10,color:"rgba(26,22,20,0.4)",cursor:"pointer",letterSpacing:1}}>DÉCONNEXION</button>
       <span className="api-badge">API LIVE</span>
     </div>
   </nav>
@@ -223,25 +223,25 @@ function Landing({setScreen,articles,stats}){
   const [loaded,setLoaded]=useState(false);
   useEffect(()=>{setTimeout(()=>setLoaded(true),100)},[]);
 
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <section style={{position:"relative",overflow:"hidden",padding:"clamp(40px,8vw,100px) clamp(16px,4vw,48px) clamp(30px,6vw,80px)",display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",minHeight:480}}>
       <div style={{position:"absolute",top:-120,right:-120,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.06) 0%,transparent 70%)"}}/>
       <div style={{opacity:loaded?1:0,transform:loaded?"translateY(0)":"translateY(30px)",transition:"all 0.8s cubic-bezier(0.16,1,0.3,1)"}}>
         <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",textTransform:"uppercase",marginBottom:20}}>Plateforme de location premium</div>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(32px,4vw,56px)",fontWeight:400,lineHeight:1.15,marginBottom:20}}>Le luxe n'est plus<br/>une question de<br/><span style={{fontStyle:"italic",color:"#C9A84C"}}>possession</span></h1>
-        <p style={{fontSize:15,lineHeight:1.7,color:"rgba(245,240,235,0.55)",maxWidth:420,marginBottom:32}}>Accédez aux plus belles pièces du monde ou rentabilisez votre collection. Chaque article est vérifié par notre système d'authentification avancé.</p>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(32px,4vw,56px)",fontWeight:400,lineHeight:1.15,marginBottom:20}}>Le luxe n'est plus<br/>une question de<br/><span style={{fontStyle:"italic",color:"#C9A84C"}}>possession</span></h1>
+        <p style={{fontSize:15,lineHeight:1.7,color:"rgba(26,22,20,0.55)",maxWidth:420,marginBottom:32}}>Accédez aux plus belles pièces du monde ou rentabilisez votre collection. Chaque article est vérifié par notre système d'authentification avancé.</p>
         <div style={{display:"flex",gap:12}}>
-          <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>EXPLORER LE CATALOGUE</button>
+          <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>EXPLORER LE CATALOGUE</button>
           <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"1px solid rgba(201,168,76,0.4)",background:"transparent",color:"#C9A84C",cursor:"pointer"}}>METTRE EN LOCATION</button>
         </div>
       </div>
       <div style={{display:"flex",justifyContent:"center",opacity:loaded?1:0,transform:loaded?"translateX(0)":"translateX(40px)",transition:"all 1s cubic-bezier(0.16,1,0.3,1) 0.2s"}}>
         <div style={{position:"relative"}}>
-          <div style={{width:280,height:340,background:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Playfair Display',serif",fontSize:72,color:"rgba(201,168,76,0.2)"}}>H</span></div>
+          <div style={{width:280,height:340,background:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Montserrat',sans-serif",fontSize:72,color:"rgba(201,168,76,0.2)"}}>H</span></div>
           <div style={{position:"absolute",top:30,left:-40,width:180,height:220,background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.15)"}}/>
-          <div style={{position:"absolute",bottom:-20,right:-30,padding:"12px 20px",background:"rgba(12,10,9,0.9)",border:"1px solid rgba(201,168,76,0.2)"}}>
+          <div style={{position:"absolute",bottom:-20,right:-30,padding:"12px 20px",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(201,168,76,0.2)"}}>
             <div style={{fontSize:10,color:"#C9A84C",letterSpacing:2,marginBottom:4}}>VÉRIFIÉ</div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,color:"#F5F0EB"}}>Score 0.96</div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,color:"#1A1614"}}>Score 0.96</div>
           </div>
         </div>
       </div>
@@ -250,35 +250,35 @@ function Landing({setScreen,articles,stats}){
     <section style={{padding:"60px clamp(16px,4vw,48px)",borderTop:"1px solid rgba(201,168,76,0.08)"}}>
       <div style={{textAlign:"center",marginBottom:40}}>
         <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>VOTRE EXPÉRIENCE</div>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400}}>Comment souhaitez-vous utiliser LUXLOC ?</h2>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28}}>Comment souhaitez-vous utiliser LUXLOC ?</h2>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,maxWidth:700,margin:"0 auto"}}>
         {[{r:"renter",title:"Je veux louer",sub:"Accédez aux plus belles pièces",icon:"✦",screen:SCREENS.RENTER_BROWSE},{r:"owner",title:"Je veux mettre en location",sub:"Rentabilisez votre collection",icon:"◈",screen:SCREENS.OWNER_VERIFY}].map(item=>
-          <div key={item.r} onClick={()=>setScreen(item.screen)} onMouseEnter={()=>setRole(item.r)} onMouseLeave={()=>setRole(null)} style={{cursor:"pointer",padding:32,border:`1px solid ${role===item.r?"rgba(201,168,76,0.5)":"rgba(245,240,235,0.08)"}`,background:role===item.r?"rgba(201,168,76,0.04)":"transparent",transition:"all 0.3s"}}>
+          <div key={item.r} onClick={()=>setScreen(item.screen)} onMouseEnter={()=>setRole(item.r)} onMouseLeave={()=>setRole(null)} style={{cursor:"pointer",padding:32,border:`1px solid ${role===item.r?"rgba(201,168,76,0.5)":"rgba(26,22,20,0.08)"}`,background:role===item.r?"rgba(201,168,76,0.04)":"transparent",transition:"all 0.3s"}}>
             <div style={{fontSize:24,marginBottom:16,color:"#C9A84C"}}>{item.icon}</div>
-            <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:400,marginBottom:8}}>{item.title}</h3>
-            <p style={{fontSize:13,color:"rgba(245,240,235,0.45)",lineHeight:1.6}}>{item.sub}</p>
+            <h3 style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:400,marginBottom:8}}>{item.title}</h3>
+            <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",lineHeight:1.6}}>{item.sub}</p>
           </div>
         )}
       </div>
     </section>
 
     <section style={{padding:"60px clamp(16px,4vw,48px) 80px",borderTop:"1px solid rgba(201,168,76,0.08)"}}>
-      <div style={{marginBottom:32}}><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>CATÉGORIES</div><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400}}>Explorez par univers</h2></div>
+      <div style={{marginBottom:32}}><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>CATÉGORIES</div><h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28}}>Explorez par univers</h2></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12}}>
-        {categories.map(cat=>{const count=articles.filter(a=>a.category===cat.id).length;return <div key={cat.id} onMouseEnter={()=>setHCat(cat.id)} onMouseLeave={()=>setHCat(null)} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{cursor:"pointer",padding:"28px 20px",textAlign:"center",border:`1px solid ${hCat===cat.id?"rgba(201,168,76,0.4)":"rgba(245,240,235,0.06)"}`,background:hCat===cat.id?"rgba(201,168,76,0.03)":"transparent",transition:"all 0.3s"}}>
+        {categories.map(cat=>{const count=articles.filter(a=>a.category===cat.id).length;return <div key={cat.id} onMouseEnter={()=>setHCat(cat.id)} onMouseLeave={()=>setHCat(null)} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{cursor:"pointer",padding:"28px 20px",textAlign:"center",border:`1px solid ${hCat===cat.id?"rgba(201,168,76,0.4)":"rgba(26,22,20,0.06)"}`,background:hCat===cat.id?"rgba(201,168,76,0.03)":"transparent",transition:"all 0.3s"}}>
           <div style={{fontSize:28,marginBottom:12}}>{cat.icon}</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,marginBottom:4}}>{cat.label}</div>
-          <div style={{fontSize:11,color:"rgba(245,240,235,0.35)"}}>{count} pièces</div>
+          <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,marginBottom:4}}>{cat.label}</div>
+          <div style={{fontSize:11,color:"rgba(26,22,20,0.35)"}}>{count} pièces</div>
         </div>})}
       </div>
     </section>
 
     <section style={{padding:"48px clamp(16px,4vw,48px)",borderTop:"1px solid rgba(201,168,76,0.08)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:"rgba(201,168,76,0.08)"}}>
       {[{v:stats.articles||0,l:"Articles disponibles"},{v:"99.1%",l:"Taux d'authentification"},{v:"< 15s",l:"Analyse par article"},{v:"4.9/5",l:"Satisfaction locataires"}].map((s,i)=>
-        <div key={i} style={{padding:"28px 24px",textAlign:"center",background:"#141110"}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:"#C9A84C",marginBottom:6}}>{s.v}</div>
-          <div style={{fontSize:11,color:"rgba(245,240,235,0.4)",letterSpacing:1}}>{s.l}</div>
+        <div key={i} style={{padding:"28px 24px",textAlign:"center",background:"#FAF8F4"}}>
+          <div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:"#C9A84C",marginBottom:6}}>{s.v}</div>
+          <div style={{fontSize:11,color:"rgba(26,22,20,0.4)",letterSpacing:1}}>{s.l}</div>
         </div>
       )}
     </section>
@@ -373,95 +373,95 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   const photoLabels=["Vue d'ensemble","Logo / Marque","Étiquette intérieure","Coutures & finitions"];
   const nbPhotos = photos.filter(Boolean).length;
 
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{marginBottom:40}}>
         <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PROPRIÉTAIRE — VÉRIFICATION<span className="api-badge">CONNECTÉ API</span></div>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:400,marginBottom:8}}>Authentifiez votre article</h1>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:8}}>Authentifiez votre article</h1>
       </div>
       <div style={{display:"flex",gap:4,marginBottom:40}}>
-        {["Informations","Documents","Photos article","Analyse IA"].map((s,i)=><div key={i} style={{flex:1}}><div style={{height:2,background:i<=step?"#C9A84C":"rgba(245,240,235,0.08)",transition:"background 0.4s",marginBottom:8}}/><div style={{fontSize:11,color:i<=step?"#C9A84C":"rgba(245,240,235,0.3)",letterSpacing:1}}>{s}</div></div>)}
+        {["Informations","Documents","Photos article","Analyse IA"].map((s,i)=><div key={i} style={{flex:1}}><div style={{height:2,background:i<=step?"#C9A84C":"rgba(26,22,20,0.08)",transition:"background 0.4s",marginBottom:8}}/><div style={{fontSize:11,color:i<=step?"#C9A84C":"rgba(26,22,20,0.3)",letterSpacing:1}}>{s}</div></div>)}
       </div>
 
       {/* STEP 0 — Infos article */}
       {step===0&&<div style={{display:"grid",gap:20}}>
-        <div><label style={{fontSize:12,color:"rgba(245,240,235,0.5)",display:"block",marginBottom:8}}>Catégorie</label>
+        <div><label style={{fontSize:12,color:"rgba(26,22,20,0.5)",display:"block",marginBottom:8}}>Catégorie</label>
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-          {categories.map(c=><div key={c.id} onClick={()=>setCat(c.id)} style={{cursor:"pointer",padding:"16px 8px",textAlign:"center",border:`1px solid ${cat===c.id?"#C9A84C":"rgba(245,240,235,0.08)"}`,background:cat===c.id?"rgba(201,168,76,0.06)":"transparent",transition:"all 0.2s"}}><div style={{fontSize:20,marginBottom:6}}>{c.icon}</div><div style={{fontSize:11,color:cat===c.id?"#C9A84C":"rgba(245,240,235,0.5)"}}>{c.label}</div></div>)}
+          {categories.map(c=><div key={c.id} onClick={()=>setCat(c.id)} style={{cursor:"pointer",padding:"16px 8px",textAlign:"center",border:`1px solid ${cat===c.id?"#C9A84C":"rgba(26,22,20,0.08)"}`,background:cat===c.id?"rgba(201,168,76,0.06)":"transparent",transition:"all 0.2s"}}><div style={{fontSize:20,marginBottom:6}}>{c.icon}</div><div style={{fontSize:11,color:cat===c.id?"#C9A84C":"rgba(26,22,20,0.5)"}}>{c.label}</div></div>)}
         </div></div>
-        <div><label style={{fontSize:12,color:"rgba(245,240,235,0.5)",display:"block",marginBottom:8}}>Marque</label>
-        <select value={brand} onChange={e=>setBrand(e.target.value)} style={{width:"100%",padding:"14px 16px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14}}><option value="">Sélectionner</option>{["Louis Vuitton","Gucci","Hermès","Chanel","Prada","Dior","Rolex","Cartier","Burberry"].map(b=><option key={b}>{b}</option>)}</select></div>
+        <div><label style={{fontSize:12,color:"rgba(26,22,20,0.5)",display:"block",marginBottom:8}}>Marque</label>
+        <select value={brand} onChange={e=>setBrand(e.target.value)} style={{width:"100%",padding:"14px 16px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14}}><option value="">Sélectionner</option>{["Louis Vuitton","Gucci","Hermès","Chanel","Prada","Dior","Rolex","Cartier","Burberry"].map(b=><option key={b}>{b}</option>)}</select></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div><label style={{fontSize:12,color:"rgba(245,240,235,0.5)",display:"block",marginBottom:8}}>Modèle</label><input value={model} onChange={e=>setModel(e.target.value)} placeholder="ex: Speedy 25" style={{width:"100%",padding:"14px 16px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box"}}/></div>
-          <div><label style={{fontSize:12,color:"rgba(245,240,235,0.5)",display:"block",marginBottom:8}}>Prix / jour (€)</label><input value={price} onChange={e=>setPrice(e.target.value)} placeholder="ex: 85" style={{width:"100%",padding:"14px 16px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:12,color:"rgba(26,22,20,0.5)",display:"block",marginBottom:8}}>Modèle</label><input value={model} onChange={e=>setModel(e.target.value)} placeholder="ex: Speedy 25" style={{width:"100%",padding:"14px 16px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:12,color:"rgba(26,22,20,0.5)",display:"block",marginBottom:8}}>Prix / jour (€)</label><input value={price} onChange={e=>setPrice(e.target.value)} placeholder="ex: 85" style={{width:"100%",padding:"14px 16px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
         </div>
-        <button onClick={createArticle} disabled={!cat||!brand} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:cat&&brand?"#C9A84C":"rgba(245,240,235,0.08)",color:cat&&brand?"#141110":"rgba(245,240,235,0.25)",cursor:cat&&brand?"pointer":"default",fontWeight:600}}>SUIVANT — DOCUMENTS →</button>
+        <button onClick={createArticle} disabled={!cat||!brand} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:cat&&brand?"#C9A84C":"rgba(26,22,20,0.08)",color:cat&&brand?"#1A1614":"rgba(26,22,20,0.25)",cursor:cat&&brand?"pointer":"default",fontWeight:600}}>SUIVANT — DOCUMENTS →</button>
       </div>}
 
       {/* STEP 1 — Pièce d'identité + Facture */}
       {step===1&&<div style={{display:"grid",gap:24}}>
-        <p style={{fontSize:13,color:"rgba(245,240,235,0.5)"}}>Pour garantir la confiance, nous vérifions l'identité du propriétaire et la preuve d'achat de l'article.</p>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.5)"}}>Pour garantir la confiance, nous vérifions l'identité du propriétaire et la preuve d'achat de l'article.</p>
 
-        <div style={{border:"1px solid rgba(245,240,235,0.08)",padding:24}}>
+        <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:24}}>
           <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>PIÈCE D'IDENTITÉ</div>
-          <p style={{fontSize:12,color:"rgba(245,240,235,0.35)",marginBottom:16}}>Carte d'identité, passeport ou permis de conduire</p>
+          <p style={{fontSize:12,color:"rgba(26,22,20,0.35)",marginBottom:16}}>Carte d'identité, passeport ou permis de conduire</p>
           {idDoc?<div style={{display:"flex",alignItems:"center",gap:16,padding:16,background:"rgba(45,106,79,0.06)",border:"1px solid rgba(93,202,165,0.3)"}}>
             <div style={{width:48,height:48,background:"rgba(93,202,165,0.15)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>✓</div>
-            <div><div style={{fontSize:13,color:"#5DCAA5",fontWeight:500}}>{idDoc.name}</div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)"}}>Document chargé avec succès</div></div>
+            <div><div style={{fontSize:13,color:"#5DCAA5",fontWeight:500}}>{idDoc.name}</div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)"}}>Document chargé avec succès</div></div>
           </div>
-          :<div onClick={()=>handleDocFile(setIdDoc)} style={{cursor:"pointer",padding:32,border:"1px dashed rgba(245,240,235,0.15)",textAlign:"center",transition:"all 0.3s"}}>
-            <div style={{width:48,height:48,borderRadius:"50%",border:"1px solid rgba(245,240,235,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><span style={{fontSize:20,color:"rgba(245,240,235,0.3)"}}>📄</span></div>
-            <div style={{fontSize:13,color:"rgba(245,240,235,0.5)"}}>Cliquer pour charger votre pièce d'identité</div>
-            <div style={{fontSize:10,color:"rgba(245,240,235,0.25)",marginTop:4}}>JPG, PNG ou PDF — 10 Mo max</div>
+          :<div onClick={()=>handleDocFile(setIdDoc)} style={{cursor:"pointer",padding:32,border:"1px dashed rgba(26,22,20,0.15)",textAlign:"center",transition:"all 0.3s"}}>
+            <div style={{width:48,height:48,borderRadius:"50%",border:"1px solid rgba(26,22,20,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><span style={{fontSize:20,color:"rgba(26,22,20,0.3)"}}>📄</span></div>
+            <div style={{fontSize:13,color:"rgba(26,22,20,0.5)"}}>Cliquer pour charger votre pièce d'identité</div>
+            <div style={{fontSize:10,color:"rgba(26,22,20,0.25)",marginTop:4}}>JPG, PNG ou PDF — 10 Mo max</div>
           </div>}
         </div>
 
-        <div style={{border:"1px solid rgba(245,240,235,0.08)",padding:24}}>
+        <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:24}}>
           <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>FACTURE / PREUVE D'ACHAT</div>
-          <p style={{fontSize:12,color:"rgba(245,240,235,0.35)",marginBottom:16}}>Facture d'origine, ticket de caisse ou certificat d'authenticité</p>
+          <p style={{fontSize:12,color:"rgba(26,22,20,0.35)",marginBottom:16}}>Facture d'origine, ticket de caisse ou certificat d'authenticité</p>
           {invoice?<div style={{display:"flex",alignItems:"center",gap:16,padding:16,background:"rgba(45,106,79,0.06)",border:"1px solid rgba(93,202,165,0.3)"}}>
             <div style={{width:48,height:48,background:"rgba(93,202,165,0.15)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>✓</div>
-            <div><div style={{fontSize:13,color:"#5DCAA5",fontWeight:500}}>{invoice.name}</div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)"}}>Document chargé avec succès</div></div>
+            <div><div style={{fontSize:13,color:"#5DCAA5",fontWeight:500}}>{invoice.name}</div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)"}}>Document chargé avec succès</div></div>
           </div>
-          :<div onClick={()=>handleDocFile(setInvoice)} style={{cursor:"pointer",padding:32,border:"1px dashed rgba(245,240,235,0.15)",textAlign:"center",transition:"all 0.3s"}}>
-            <div style={{width:48,height:48,borderRadius:"50%",border:"1px solid rgba(245,240,235,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><span style={{fontSize:20,color:"rgba(245,240,235,0.3)"}}>🧾</span></div>
-            <div style={{fontSize:13,color:"rgba(245,240,235,0.5)"}}>Cliquer pour charger la facture</div>
-            <div style={{fontSize:10,color:"rgba(245,240,235,0.25)",marginTop:4}}>JPG, PNG ou PDF — 10 Mo max</div>
+          :<div onClick={()=>handleDocFile(setInvoice)} style={{cursor:"pointer",padding:32,border:"1px dashed rgba(26,22,20,0.15)",textAlign:"center",transition:"all 0.3s"}}>
+            <div style={{width:48,height:48,borderRadius:"50%",border:"1px solid rgba(26,22,20,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><span style={{fontSize:20,color:"rgba(26,22,20,0.3)"}}>🧾</span></div>
+            <div style={{fontSize:13,color:"rgba(26,22,20,0.5)"}}>Cliquer pour charger la facture</div>
+            <div style={{fontSize:10,color:"rgba(26,22,20,0.25)",marginTop:4}}>JPG, PNG ou PDF — 10 Mo max</div>
           </div>}
         </div>
 
-        <button onClick={()=>setStep(2)} disabled={!idDoc||!invoice} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:idDoc&&invoice?"#C9A84C":"rgba(245,240,235,0.08)",color:idDoc&&invoice?"#141110":"rgba(245,240,235,0.25)",cursor:idDoc&&invoice?"pointer":"default",fontWeight:600}}>SUIVANT — PHOTOS ARTICLE →</button>
+        <button onClick={()=>setStep(2)} disabled={!idDoc||!invoice} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:idDoc&&invoice?"#C9A84C":"rgba(26,22,20,0.08)",color:idDoc&&invoice?"#1A1614":"rgba(26,22,20,0.25)",cursor:idDoc&&invoice?"pointer":"default",fontWeight:600}}>SUIVANT — PHOTOS ARTICLE →</button>
       </div>}
 
       {/* STEP 2 — Photos de l'article */}
       {step===2&&!analyzing&&<div>
-        <p style={{fontSize:13,color:"rgba(245,240,235,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Lumière naturelle, fond neutre de préférence.</p>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Lumière naturelle, fond neutre de préférence.</p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
-          {photoLabels.map((label,i)=><div key={i} onClick={()=>handleFile(i)} style={{cursor:"pointer",aspectRatio:"4/3",border:`1px ${photos[i]?"solid rgba(45,106,79,0.6)":"dashed rgba(245,240,235,0.15)"}`,background:photos[i]?"rgba(45,106,79,0.04)":"rgba(245,240,235,0.02)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all 0.3s",overflow:"hidden",position:"relative"}}>
+          {photoLabels.map((label,i)=><div key={i} onClick={()=>handleFile(i)} style={{cursor:"pointer",aspectRatio:"4/3",border:`1px ${photos[i]?"solid rgba(45,106,79,0.6)":"dashed rgba(26,22,20,0.15)"}`,background:photos[i]?"rgba(45,106,79,0.04)":"rgba(26,22,20,0.02)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all 0.3s",overflow:"hidden",position:"relative"}}>
             {photos[i]?<>
               <img src={photos[i]} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.85}}/>
-              <div style={{position:"relative",zIndex:2,background:"rgba(12,10,9,0.7)",padding:"6px 16px",borderRadius:4}}>
+              <div style={{position:"relative",zIndex:2,background:"rgba(255,255,255,0.7)",padding:"6px 16px",borderRadius:4}}>
                 <span style={{fontSize:12,color:"#5DCAA5",fontWeight:600}}>✓ {label}</span>
               </div>
             </>
-            :<><div style={{width:40,height:40,borderRadius:"50%",border:"1px solid rgba(245,240,235,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}><span style={{fontSize:18,color:"rgba(245,240,235,0.3)"}}>📷</span></div>
-            <span style={{fontSize:12,color:"rgba(245,240,235,0.35)"}}>{label}</span>
-            <span style={{fontSize:10,color:"rgba(245,240,235,0.2)",marginTop:4}}>Cliquer pour ajouter</span></>}
+            :<><div style={{width:40,height:40,borderRadius:"50%",border:"1px solid rgba(26,22,20,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}><span style={{fontSize:18,color:"rgba(26,22,20,0.3)"}}>📷</span></div>
+            <span style={{fontSize:12,color:"rgba(26,22,20,0.35)"}}>{label}</span>
+            <span style={{fontSize:10,color:"rgba(26,22,20,0.2)",marginTop:4}}>Cliquer pour ajouter</span></>}
           </div>)}
         </div>
-        <div style={{fontSize:11,color:nbPhotos>=3?"#5DCAA5":"rgba(245,240,235,0.3)",marginBottom:12,textAlign:"center"}}>{nbPhotos}/4 photos ajoutées {nbPhotos>=3?"— prêt pour l'analyse":""}</div>
-        <button onClick={()=>{uploadPhotosAndDocs().then(()=>{setStep(3);startAnalysis();});}} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(245,240,235,0.08)",color:nbPhotos>=3?"#141110":"rgba(245,240,235,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
+        <div style={{fontSize:11,color:nbPhotos>=3?"#5DCAA5":"rgba(26,22,20,0.3)",marginBottom:12,textAlign:"center"}}>{nbPhotos}/4 photos ajoutées {nbPhotos>=3?"— prêt pour l'analyse":""}</div>
+        <button onClick={()=>{uploadPhotosAndDocs().then(()=>{setStep(3);startAnalysis();});}} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(26,22,20,0.08)",color:nbPhotos>=3?"#1A1614":"rgba(26,22,20,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
       </div>}
 
       {/* STEP 3 — Analyse */}
       {step===3&&analyzing&&<div style={{textAlign:"center",padding:"60px 0"}}>
         <div style={{width:120,height:120,borderRadius:"50%",margin:"0 auto 32px",border:"2px solid rgba(201,168,76,0.2)",position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{position:"absolute",inset:0,borderRadius:"50%",border:"2px solid transparent",borderTopColor:"#C9A84C",animation:"spin 1s linear infinite"}}/>
-          <span style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:"#C9A84C"}}>{progress}%</span>
+          <span style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:"#C9A84C"}}>{progress}%</span>
         </div>
         <div style={{fontSize:14,color:"#C9A84C",marginBottom:8}}>{pLabel}</div>
-        <div style={{width:300,height:3,background:"rgba(245,240,235,0.06)",margin:"16px auto",borderRadius:2}}><div style={{height:"100%",background:"#C9A84C",borderRadius:2,width:`${progress}%`,transition:"width 0.3s"}}/></div>
-        <div style={{fontSize:11,color:"rgba(245,240,235,0.3)",marginTop:16}}>Appel POST /api/v1/verification/launch en cours...</div>
+        <div style={{width:300,height:3,background:"rgba(26,22,20,0.06)",margin:"16px auto",borderRadius:2}}><div style={{height:"100%",background:"#C9A84C",borderRadius:2,width:`${progress}%`,transition:"width 0.3s"}}/></div>
+        <div style={{fontSize:11,color:"rgba(26,22,20,0.3)",marginTop:16}}>Appel POST /api/v1/verification/launch en cours...</div>
       </div>}
     </div>
   </div>
@@ -484,29 +484,29 @@ function OwnerResult({setScreen,verifResult,showToast}){
   const scores=[{label:"Modèle IA (authenticité)",score:sc.cnn},{label:"Logo & monogramme",score:sc.logo},{label:"Coutures & finitions",score:sc.stitching},{label:"Texture matériaux",score:sc.texture},{label:"Étiquette & série",score:sc.label},{label:"Règles métier",score:sc.rules},{label:"Facture d'achat",score:sc.invoice}];
   const brandSig=verifResult.analysis&&verifResult.analysis.signature_marque;
 
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{textAlign:"center",marginBottom:48,opacity:loaded?1:0,transform:loaded?"translateY(0)":"translateY(20px)",transition:"all 0.6s"}}>
         <div style={{width:100,height:100,borderRadius:"50%",margin:"0 auto 24px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:36,color:"#5DCAA5"}}>✓</span></div>
         <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:12}}>{verifResult.verdict}<span className="api-badge">DONNÉES API</span></div>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:400,marginBottom:8}}>Score de confiance : <span style={{color:"#5DCAA5"}}>{sc.global}</span></h1>
-        <p style={{fontSize:12,color:"rgba(245,240,235,0.35)"}}>Pipeline {verifResult.pipeline?.version} — {verifResult.pipeline?.processing_time_ms}ms</p>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:36,marginBottom:8}}>Score de confiance : <span style={{color:"#5DCAA5"}}>{sc.global}</span></h1>
+        <p style={{fontSize:12,color:"rgba(26,22,20,0.35)"}}>Pipeline {verifResult.pipeline?.version} — {verifResult.pipeline?.processing_time_ms}ms</p>
       </div>
-      <div style={{border:"1px solid rgba(245,240,235,0.08)",padding:28,marginBottom:24}}>
+      <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:28,marginBottom:24}}>
         <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:20}}>DÉTAIL PAR COMPOSANT (retourné par l'API)</div>
         {scores.map((s,i)=>{const v=Math.min(Math.max(s.score,0),1);const color=v>=0.85?"#5DCAA5":v>=0.7?"#C9A84C":"#EF9F27";return <div key={i} style={{display:"flex",alignItems:"center",gap:16,marginBottom:i<scores.length-1?16:0}}>
-          <span style={{fontSize:13,color:"rgba(245,240,235,0.6)",minWidth:160}}>{s.label}</span>
-          <div style={{flex:1,height:4,background:"rgba(245,240,235,0.06)",borderRadius:2}}><div style={{height:"100%",background:color,borderRadius:2,width:`${v*100}%`,transition:"width 1s ease-out",transitionDelay:`${i*0.15}s`}}/></div>
+          <span style={{fontSize:13,color:"rgba(26,22,20,0.6)",minWidth:160}}>{s.label}</span>
+          <div style={{flex:1,height:4,background:"rgba(26,22,20,0.06)",borderRadius:2}}><div style={{height:"100%",background:color,borderRadius:2,width:`${v*100}%`,transition:"width 1s ease-out",transitionDelay:`${i*0.15}s`}}/></div>
           <span style={{fontSize:14,fontWeight:600,color,minWidth:36,textAlign:"right"}}>{v.toFixed(2)}</span>
         </div>})}
       </div>
       {brandSig && <div style={{border:"1px solid rgba(201,168,76,0.25)",padding:24,marginBottom:24,background:"rgba(201,168,76,0.03)"}}>
         <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:14}}>SIGNATURE DE MARQUE — ANALYSE COULEUR</div>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:12}}>
-          <span style={{fontSize:28,fontFamily:"'Playfair Display',serif",color:brandSig.score>=0.75?"#5DCAA5":brandSig.score>=0.5?"#C9A84C":"#EF9F27"}}>{brandSig.score.toFixed(2)}</span>
-          <span style={{fontSize:13,color:"rgba(245,240,235,0.65)"}}>{brandSig.verdict}</span>
+          <span style={{fontSize:28,fontFamily:"'Montserrat',sans-serif",color:brandSig.score>=0.75?"#5DCAA5":brandSig.score>=0.5?"#C9A84C":"#EF9F27"}}>{brandSig.score.toFixed(2)}</span>
+          <span style={{fontSize:13,color:"rgba(26,22,20,0.65)"}}>{brandSig.verdict}</span>
         </div>
-        <div style={{display:"flex",gap:20,fontSize:11,color:"rgba(245,240,235,0.45)"}}>
+        <div style={{display:"flex",gap:20,fontSize:11,color:"rgba(26,22,20,0.45)"}}>
           {brandSig.details.justesse_rouge!==undefined&&<span>Justesse rouge : {brandSig.details.justesse_rouge}</span>}
           {brandSig.details.justesse_marine!==undefined&&<span>Justesse marine : {brandSig.details.justesse_marine}</span>}
         </div>
@@ -514,16 +514,16 @@ function OwnerResult({setScreen,verifResult,showToast}){
       {verifResult.status==="review" && <div style={{border:`1px solid ${validated?"rgba(93,202,165,0.35)":"rgba(239,159,39,0.35)"}`,padding:24,marginBottom:24,background:validated?"rgba(45,106,79,0.08)":"rgba(239,159,39,0.06)"}}>
         {validated ? <>
           <div style={{fontSize:12,letterSpacing:2,color:"#5DCAA5",marginBottom:8}}>✓ VALIDÉ PAR L'EXPERT</div>
-          <p style={{fontSize:13,color:"rgba(245,240,235,0.6)",lineHeight:1.6}}>L'article a été validé et est désormais disponible à la location dans le catalogue.</p>
+          <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6}}>L'article a été validé et est désormais disponible à la location dans le catalogue.</p>
         </> : <>
           <div style={{fontSize:12,letterSpacing:2,color:"#EF9F27",marginBottom:8}}>EN ATTENTE DE VALIDATION EXPERT</div>
-          <p style={{fontSize:13,color:"rgba(245,240,235,0.6)",lineHeight:1.6,marginBottom:16}}>Le score se situe dans la zone d'incertitude (0,40–0,84). Conformément au pipeline, l'article est routé vers un expert humain qui tranche avant la mise en location.</p>
+          <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6,marginBottom:16}}>Le score se situe dans la zone d'incertitude (0,40–0,84). Conformément au pipeline, l'article est routé vers un expert humain qui tranche avant la mise en location.</p>
           <button onClick={expertValidate} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>SIMULER LA VALIDATION PAR UN EXPERT</button>
         </>}
       </div>}
       <div style={{display:"flex",gap:12}}>
-        <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(245,240,235,0.15)",background:"transparent",color:"#F5F0EB",cursor:"pointer"}}>VOIR LE CATALOGUE</button>
-        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>PUBLIER L'ANNONCE →</button>
+        <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>VOIR LE CATALOGUE</button>
+        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>PUBLIER L'ANNONCE →</button>
       </div>
     </div>
   </div>
@@ -565,7 +565,7 @@ function ProductImage({brand,articleId,photo,hovered,style}) {
       <div style={{position:"absolute",inset:0,opacity:0.08,background:"repeating-linear-gradient(45deg,transparent,transparent 35px,rgba(255,255,255,0.05) 35px,rgba(255,255,255,0.05) 70px)"}}/>
       <div style={{textAlign:"center",zIndex:1}}>
         <div style={{fontSize:40,marginBottom:4,filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.3))"}}>{v.emoji}</div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,color:"rgba(255,255,255,0.25)",letterSpacing:4}}>{v.pattern}</div>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,color:"rgba(255,255,255,0.25)",letterSpacing:4}}>{v.pattern}</div>
       </div>
     </>}
   </div>
@@ -576,26 +576,26 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
   const [hovered,setHovered]=useState(null);
   const filtered=filter==="all"?articles:articles.filter(p=>p.category===filter);
 
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{padding:"40px clamp(16px,4vw,48px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
-        <div><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>LOCATAIRE<span className="api-badge">GET /articles</span></div><h1 style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:400}}>Catalogue</h1></div>
+        <div><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>LOCATAIRE<span className="api-badge">GET /articles</span></div><h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32}}>Catalogue</h1></div>
         <div style={{display:"flex",gap:6}}>
-          {[{id:"all",label:"Tous"},...categories].map(c=><button key={c.id} onClick={()=>setFilter(c.id)} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",border:`1px solid ${filter===c.id?"#C9A84C":"rgba(245,240,235,0.1)"}`,background:filter===c.id?"rgba(201,168,76,0.1)":"transparent",color:filter===c.id?"#C9A84C":"rgba(245,240,235,0.4)",cursor:"pointer"}}>{c.label}</button>)}
+          {[{id:"all",label:"Tous"},...categories].map(c=><button key={c.id} onClick={()=>setFilter(c.id)} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",border:`1px solid ${filter===c.id?"#C9A84C":"rgba(26,22,20,0.1)"}`,background:filter===c.id?"rgba(201,168,76,0.1)":"transparent",color:filter===c.id?"#C9A84C":"rgba(26,22,20,0.4)",cursor:"pointer"}}>{c.label}</button>)}
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
-        {filtered.map(p=><div key={p.id} onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)} onClick={()=>{setSelectedArticle(p);setScreen(SCREENS.RENTER_DETAIL);}} style={{cursor:"pointer",border:`1px solid ${hovered===p.id?"rgba(201,168,76,0.35)":"rgba(245,240,235,0.07)"}`,background:hovered===p.id?"rgba(201,168,76,0.04)":"rgba(245,240,235,0.015)",transition:"all 0.35s cubic-bezier(.2,.8,.2,1)",transform:hovered===p.id?"translateY(-4px)":"translateY(0)",boxShadow:hovered===p.id?"0 18px 44px rgba(0,0,0,0.45)":"0 1px 2px rgba(0,0,0,0.2)"}}>
+        {filtered.map(p=><div key={p.id} onMouseEnter={()=>setHovered(p.id)} onMouseLeave={()=>setHovered(null)} onClick={()=>{setSelectedArticle(p);setScreen(SCREENS.RENTER_DETAIL);}} style={{cursor:"pointer",border:`1px solid ${hovered===p.id?"rgba(201,168,76,0.45)":"rgba(26,22,20,0.08)"}`,background:hovered===p.id?"rgba(255,255,255,1)":"rgba(255,255,255,0.7)",transition:"all 0.35s cubic-bezier(.2,.8,.2,1)",transform:hovered===p.id?"translateY(-4px)":"translateY(0)",boxShadow:hovered===p.id?"0 18px 40px rgba(26,22,20,0.10)":"0 1px 3px rgba(26,22,20,0.04)"}}>
           <ProductImage brand={p.brand} articleId={p.id} photo={p.photo} hovered={hovered===p.id} style={{height:220}} />
-          {(()=>{const b=verifBadge(p.verification_status,p.verification_score);return b&&<div style={{position:"relative",marginTop:-32,marginRight:12,textAlign:"right",zIndex:2}}><span style={{padding:"4px 10px",background:"rgba(20,17,16,0.9)",border:`1px solid ${b.border}`,fontSize:10,color:b.color,letterSpacing:1}}>{b.label}</span></div>;})()}
+          {(()=>{const b=verifBadge(p.verification_status,p.verification_score);return b&&<div style={{position:"relative",marginTop:-32,marginRight:12,textAlign:"right",zIndex:2}}><span style={{padding:"4px 10px",background:"rgba(255,255,255,0.9)",border:`1px solid ${b.border}`,fontSize:10,color:b.color,letterSpacing:1}}>{b.label}</span></div>;})()}
           <div style={{padding:"12px 20px 16px"}}>
             <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1,marginBottom:4}}>{p.brand}</div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,marginBottom:8}}>{p.title}</div>
-            <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:18,fontWeight:600}}>{p.price_per_day}€<span style={{fontSize:11,fontWeight:400,color:"rgba(245,240,235,0.4)"}}>/jour</span></span><span style={{fontSize:11,color:"rgba(245,240,235,0.35)"}}>{p.condition}</span></div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,marginBottom:8}}>{p.title}</div>
+            <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:18,fontWeight:600}}>{p.price_per_day}€<span style={{fontSize:11,fontWeight:400,color:"rgba(26,22,20,0.4)"}}>/jour</span></span><span style={{fontSize:11,color:"rgba(26,22,20,0.35)"}}>{p.condition}</span></div>
           </div>
         </div>)}
       </div>
-      {filtered.length===0&&<div style={{textAlign:"center",padding:60,color:"rgba(245,240,235,0.3)"}}>Aucun article dans cette catégorie</div>}
+      {filtered.length===0&&<div style={{textAlign:"center",padding:60,color:"rgba(26,22,20,0.3)"}}>Aucun article dans cette catégorie</div>}
     </div>
   </div>
 }
@@ -620,9 +620,9 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
   };
 
   if(!article) return null;
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{padding:"40px clamp(16px,4vw,48px)"}}>
-      <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{background:"none",border:"none",color:"rgba(245,240,235,0.4)",fontSize:12,cursor:"pointer",marginBottom:24}}>← Retour au catalogue</button>
+      <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{background:"none",border:"none",color:"rgba(26,22,20,0.4)",fontSize:12,cursor:"pointer",marginBottom:24}}>← Retour au catalogue</button>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40}}>
         <div>
           <ProductImage brand={article.brand} articleId={article.id} photo={article.photo} style={{aspectRatio:"1",marginBottom:12}} />
@@ -630,22 +630,22 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
         <div>
           {(()=>{const b=verifBadge(article.verification_status,article.verification_score);return b&&<span style={{padding:"4px 10px",background:b.bg,border:`1px solid ${b.border}`,fontSize:10,color:b.color,letterSpacing:1}}>{b.label}</span>;})()}
           <div style={{fontSize:12,color:"#C9A84C",letterSpacing:2,marginTop:16,marginBottom:4}}>{article.brand}</div>
-          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400,marginBottom:8}}>{article.title}</h1>
-          <p style={{fontSize:13,color:"rgba(245,240,235,0.45)",lineHeight:1.6,marginBottom:24}}>{article.description}</p>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:36,marginBottom:24}}>{article.price_per_day}€ <span style={{fontSize:16,fontWeight:400,color:"rgba(245,240,235,0.4)"}}>/ jour</span></div>
-          <div style={{border:"1px solid rgba(245,240,235,0.08)",padding:20,marginBottom:16}}>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,marginBottom:8}}>{article.title}</h1>
+          <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",lineHeight:1.6,marginBottom:24}}>{article.description}</p>
+          <div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:36,marginBottom:24}}>{article.price_per_day}€ <span style={{fontSize:16,fontWeight:400,color:"rgba(26,22,20,0.4)"}}>/ jour</span></div>
+          <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:20,marginBottom:16}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-              <div><label style={{fontSize:11,color:"rgba(245,240,235,0.4)",display:"block",marginBottom:6}}>Début</label><input type="date" value={dates.start} onChange={e=>setDates({...dates,start:e.target.value})} style={{width:"100%",padding:"10px 12px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:13,boxSizing:"border-box"}}/></div>
-              <div><label style={{fontSize:11,color:"rgba(245,240,235,0.4)",display:"block",marginBottom:6}}>Fin</label><input type="date" value={dates.end} onChange={e=>setDates({...dates,end:e.target.value})} style={{width:"100%",padding:"10px 12px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:13,boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:"rgba(26,22,20,0.4)",display:"block",marginBottom:6}}>Début</label><input type="date" value={dates.start} onChange={e=>setDates({...dates,start:e.target.value})} style={{width:"100%",padding:"10px 12px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:13,boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:"rgba(26,22,20,0.4)",display:"block",marginBottom:6}}>Fin</label><input type="date" value={dates.end} onChange={e=>setDates({...dates,end:e.target.value})} style={{width:"100%",padding:"10px 12px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:13,boxSizing:"border-box"}}/></div>
             </div>
             {estimate&&<>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"8px 0",borderTop:"1px solid rgba(245,240,235,0.06)"}}><span style={{color:"rgba(245,240,235,0.5)"}}>{estimate.nb_days} jours × {estimate.price_per_day}€</span><span>{estimate.subtotal}€</span></div>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"8px 0"}}><span style={{color:"rgba(245,240,235,0.5)"}}>Assurance premium</span><span>{estimate.insurance_fee}€</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"8px 0",borderTop:"1px solid rgba(26,22,20,0.06)"}}><span style={{color:"rgba(26,22,20,0.5)"}}>{estimate.nb_days} jours × {estimate.price_per_day}€</span><span>{estimate.subtotal}€</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"8px 0"}}><span style={{color:"rgba(26,22,20,0.5)"}}>Assurance premium</span><span>{estimate.insurance_fee}€</span></div>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:15,padding:"12px 0 0",borderTop:"1px solid rgba(201,168,76,0.2)",fontWeight:600}}><span style={{color:"#C9A84C"}}>Total</span><span style={{color:"#C9A84C"}}>{estimate.total}€</span></div>
             </>}
           </div>
-          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>RÉSERVER VIA API →</button>
-          <p style={{fontSize:11,color:"rgba(245,240,235,0.3)",textAlign:"center",marginTop:12}}>POST /api/v1/transactions/ — Paiement sécurisé</p>
+          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>RÉSERVER VIA API →</button>
+          <p style={{fontSize:11,color:"rgba(26,22,20,0.3)",textAlign:"center",marginTop:12}}>POST /api/v1/transactions/ — Paiement sécurisé</p>
         </div>
       </div>
     </div>
@@ -668,42 +668,42 @@ function RenterReturn({setScreen,showToast}){
 
   useEffect(()=>{ if(Object.keys(conditions).length===4) submitReturn(); },[Object.keys(conditions).length]);
 
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>LOCATAIRE — RETOUR<span className="api-badge">POST /returns</span></div>
-      <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:400,marginBottom:32}}>Retour de l'article</h1>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:32}}>Retour de l'article</h1>
 
-      <div style={{display:"flex",gap:16,padding:20,border:"1px solid rgba(245,240,235,0.08)",marginBottom:32}}>
-        <div style={{width:80,height:80,background:"linear-gradient(135deg,rgba(109,46,70,0.2),rgba(201,168,76,0.08))",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"rgba(201,168,76,0.2)"}}>HE</span></div>
-        <div><div style={{fontSize:11,color:"#C9A84C",letterSpacing:1}}>HERMÈS</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:17,marginBottom:4}}>Kelly 28 Togo</div><div style={{fontSize:12,color:"rgba(245,240,235,0.4)"}}>5 avr. — 8 avr. 2026 · 3 jours</div></div>
+      <div style={{display:"flex",gap:16,padding:20,border:"1px solid rgba(26,22,20,0.08)",marginBottom:32}}>
+        <div style={{width:80,height:80,background:"linear-gradient(135deg,rgba(109,46,70,0.2),rgba(201,168,76,0.08))",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:24,color:"rgba(201,168,76,0.2)"}}>HE</span></div>
+        <div><div style={{fontSize:11,color:"#C9A84C",letterSpacing:1}}>HERMÈS</div><div style={{fontFamily:"'Montserrat',sans-serif",fontSize:17,marginBottom:4}}>Kelly 28 Togo</div><div style={{fontSize:12,color:"rgba(26,22,20,0.4)"}}>5 avr. — 8 avr. 2026 · 3 jours</div></div>
       </div>
 
       <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>COMPARAISON AVANT / APRÈS</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:32}}>
-        <div style={{border:"1px solid rgba(245,240,235,0.06)",padding:16}}><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:8}}>ÉTAT INITIAL</div><div style={{height:120,background:"rgba(93,202,165,0.04)",border:"1px solid rgba(93,202,165,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:11,color:"rgba(93,202,165,0.5)"}}>Photos archivées</span></div></div>
-        <div style={{border:"1px solid rgba(245,240,235,0.06)",padding:16}}><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:8}}>ÉTAT ACTUEL</div><div style={{height:120,background:"rgba(201,168,76,0.04)",border:"1px dashed rgba(201,168,76,0.2)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><span style={{fontSize:11,color:"rgba(201,168,76,0.5)"}}>+ Photos de retour</span></div></div>
+        <div style={{border:"1px solid rgba(26,22,20,0.06)",padding:16}}><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:8}}>ÉTAT INITIAL</div><div style={{height:120,background:"rgba(93,202,165,0.04)",border:"1px solid rgba(93,202,165,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:11,color:"rgba(93,202,165,0.5)"}}>Photos archivées</span></div></div>
+        <div style={{border:"1px solid rgba(26,22,20,0.06)",padding:16}}><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:8}}>ÉTAT ACTUEL</div><div style={{height:120,background:"rgba(201,168,76,0.04)",border:"1px dashed rgba(201,168,76,0.2)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><span style={{fontSize:11,color:"rgba(201,168,76,0.5)"}}>+ Photos de retour</span></div></div>
       </div>
 
       <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>CHECKLIST DE RETOUR</div>
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:32}}>
-        {cps.map(cp=><div key={cp.id} style={{display:"flex",alignItems:"center",gap:16,padding:"16px 20px",border:`1px solid ${conditions[cp.id]!==undefined?(conditions[cp.id]?"rgba(93,202,165,0.3)":"rgba(239,159,39,0.3)"):"rgba(245,240,235,0.06)"}`,background:conditions[cp.id]===true?"rgba(93,202,165,0.03)":conditions[cp.id]===false?"rgba(239,159,39,0.03)":"transparent",transition:"all 0.3s"}}>
-          <div style={{flex:1}}><div style={{fontSize:14,fontWeight:500,marginBottom:2}}>{cp.label}</div><div style={{fontSize:12,color:"rgba(245,240,235,0.4)"}}>{cp.desc}</div></div>
+        {cps.map(cp=><div key={cp.id} style={{display:"flex",alignItems:"center",gap:16,padding:"16px 20px",border:`1px solid ${conditions[cp.id]!==undefined?(conditions[cp.id]?"rgba(93,202,165,0.3)":"rgba(239,159,39,0.3)"):"rgba(26,22,20,0.06)"}`,background:conditions[cp.id]===true?"rgba(93,202,165,0.03)":conditions[cp.id]===false?"rgba(239,159,39,0.03)":"transparent",transition:"all 0.3s"}}>
+          <div style={{flex:1}}><div style={{fontSize:14,fontWeight:500,marginBottom:2}}>{cp.label}</div><div style={{fontSize:12,color:"rgba(26,22,20,0.4)"}}>{cp.desc}</div></div>
           <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>setConditions({...conditions,[cp.id]:true})} style={{width:36,height:36,border:`1px solid ${conditions[cp.id]===true?"#5DCAA5":"rgba(245,240,235,0.1)"}`,background:conditions[cp.id]===true?"rgba(93,202,165,0.15)":"transparent",color:conditions[cp.id]===true?"#5DCAA5":"rgba(245,240,235,0.3)",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
-            <button onClick={()=>setConditions({...conditions,[cp.id]:false})} style={{width:36,height:36,border:`1px solid ${conditions[cp.id]===false?"#EF9F27":"rgba(245,240,235,0.1)"}`,background:conditions[cp.id]===false?"rgba(239,159,39,0.1)":"transparent",color:conditions[cp.id]===false?"#EF9F27":"rgba(245,240,235,0.3)",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✗</button>
+            <button onClick={()=>setConditions({...conditions,[cp.id]:true})} style={{width:36,height:36,border:`1px solid ${conditions[cp.id]===true?"#5DCAA5":"rgba(26,22,20,0.1)"}`,background:conditions[cp.id]===true?"rgba(93,202,165,0.15)":"transparent",color:conditions[cp.id]===true?"#5DCAA5":"rgba(26,22,20,0.3)",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
+            <button onClick={()=>setConditions({...conditions,[cp.id]:false})} style={{width:36,height:36,border:`1px solid ${conditions[cp.id]===false?"#EF9F27":"rgba(26,22,20,0.1)"}`,background:conditions[cp.id]===false?"rgba(239,159,39,0.1)":"transparent",color:conditions[cp.id]===false?"#EF9F27":"rgba(26,22,20,0.3)",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✗</button>
           </div>
         </div>)}
       </div>
 
       {returnResult&&<div style={{textAlign:"center",padding:28,border:"1px solid rgba(93,202,165,0.2)",background:"rgba(93,202,165,0.03)",marginBottom:24}}>
         <div style={{fontSize:11,letterSpacing:3,color:"#5DCAA5",marginBottom:8}}>{returnResult.verdict}</div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18}}>Garantie : {returnResult.guarantee?.refunded}€ restitués / {returnResult.guarantee?.deducted}€ retenus</div>
-        <div style={{fontSize:10,color:"rgba(245,240,235,0.3)",marginTop:8}}>Réponse API : condition={returnResult.condition}</div>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18}}>Garantie : {returnResult.guarantee?.refunded}€ restitués / {returnResult.guarantee?.deducted}€ retenus</div>
+        <div style={{fontSize:10,color:"rgba(26,22,20,0.3)",marginTop:8}}>Réponse API : condition={returnResult.condition}</div>
       </div>}
 
       <div style={{display:"flex",gap:12}}>
-        <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(245,240,235,0.15)",background:"transparent",color:"#F5F0EB",cursor:"pointer"}}>RETOUR CATALOGUE</button>
-        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>TERMINER</button>
+        <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>RETOUR CATALOGUE</button>
+        <button onClick={()=>setScreen(SCREENS.LANDING)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>TERMINER</button>
       </div>
     </div>
   </div>
@@ -740,25 +740,25 @@ function OwnerDashboard({setScreen,user,showToast}){
   const totalRevenue = transactions.reduce((s,t)=>s+(t.total||0),0);
   const activeRentals = transactions.filter(t=>t.status==="active"||t.status==="confirmed").length;
 
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:900,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:40}}>
         <div>
           <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>MON ESPACE PROPRIÉTAIRE</div>
-          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:400}}>Bienvenue, {user?.first_name}</h1>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32}}>Bienvenue, {user?.first_name}</h1>
         </div>
         <div style={{textAlign:"right"}}>
-          <div style={{fontSize:11,color:"rgba(245,240,235,0.35)"}}>Score de confiance</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:"#C9A84C"}}>{user?.trust_score?.toFixed(2)||"0.50"}</div>
+          <div style={{fontSize:11,color:"rgba(26,22,20,0.35)"}}>Score de confiance</div>
+          <div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:"#C9A84C"}}>{user?.trust_score?.toFixed(2)||"0.50"}</div>
         </div>
       </div>
 
       {/* Stats cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:40}}>
         {[{v:articles.length,l:"Articles déposés",c:"#C9A84C"},{v:articles.filter(a=>a.is_available).length,l:"Disponibles",c:"#5DCAA5"},{v:activeRentals,l:"Locations actives",c:"#E07A2F"},{v:totalRevenue.toFixed(0)+"€",l:"Revenus totaux",c:"#C9A84C"}].map((s,i)=>
-          <div key={i} style={{padding:"24px 20px",border:"1px solid rgba(245,240,235,0.06)",textAlign:"center"}}>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:s.c,marginBottom:4}}>{s.v}</div>
-            <div style={{fontSize:11,color:"rgba(245,240,235,0.4)",letterSpacing:1}}>{s.l}</div>
+          <div key={i} style={{padding:"24px 20px",border:"1px solid rgba(26,22,20,0.06)",textAlign:"center"}}>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:s.c,marginBottom:4}}>{s.v}</div>
+            <div style={{fontSize:11,color:"rgba(26,22,20,0.4)",letterSpacing:1}}>{s.l}</div>
           </div>
         )}
       </div>
@@ -766,16 +766,16 @@ function OwnerDashboard({setScreen,user,showToast}){
       {/* Articles list */}
       <div style={{marginBottom:40}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:400}}>Mes articles</h2>
-          <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:12,letterSpacing:1,padding:"10px 24px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>+ AJOUTER UN ARTICLE</button>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22}}>Mes articles</h2>
+          <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:12,letterSpacing:1,padding:"10px 24px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>+ AJOUTER UN ARTICLE</button>
         </div>
-        {articles.length===0?<div style={{padding:40,border:"1px dashed rgba(245,240,235,0.1)",textAlign:"center",color:"rgba(245,240,235,0.3)"}}>Aucun article déposé. Commencez par ajouter un article.</div>
-        :articles.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:20,padding:16,border:"1px solid rgba(245,240,235,0.06)",marginBottom:8}}>
+        {articles.length===0?<div style={{padding:40,border:"1px dashed rgba(26,22,20,0.1)",textAlign:"center",color:"rgba(26,22,20,0.3)"}}>Aucun article déposé. Commencez par ajouter un article.</div>
+        :articles.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:20,padding:16,border:"1px solid rgba(26,22,20,0.06)",marginBottom:8}}>
           <ProductImage brand={a.brand} articleId={a.id} photo={a.photo} style={{width:70,height:70,flexShrink:0}}/>
           <div style={{flex:1}}>
             <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1}}>{a.brand}</div>
             <div style={{fontSize:15,fontWeight:500}}>{a.title}</div>
-            <div style={{fontSize:12,color:"rgba(245,240,235,0.4)"}}>{a.price_per_day}€/jour · {a.condition}</div>
+            <div style={{fontSize:12,color:"rgba(26,22,20,0.4)"}}>{a.price_per_day}€/jour · {a.condition}</div>
           </div>
           <div style={{textAlign:"right"}}>
             {(()=>{
@@ -784,7 +784,7 @@ function OwnerDashboard({setScreen,user,showToast}){
               const col=a.is_available?"#5DCAA5":st==="rejected"?"#E08585":"#EF9F27";
               return <span style={{padding:"4px 10px",fontSize:10,letterSpacing:1,border:"1px solid",borderColor:col,color:col,opacity:0.95}}>{label}</span>;
             })()}
-            {a.verification_score&&<div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginTop:6}}>Score IA : {a.verification_score.toFixed(2)}</div>}
+            {a.verification_score&&<div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginTop:6}}>Score IA : {a.verification_score.toFixed(2)}</div>}
             {a.verification_status==="review"&&!a.is_available&&<button onClick={()=>expertValidate(a.id)} style={{marginTop:8,fontSize:10,letterSpacing:1,padding:"6px 12px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>VALIDER (EXPERT)</button>}
           </div>
         </div>)}
@@ -792,27 +792,27 @@ function OwnerDashboard({setScreen,user,showToast}){
 
       {/* Transactions / locataires */}
       <div>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:400,marginBottom:20}}>Historique des locations</h2>
-        {transactions.length===0?<div style={{padding:40,border:"1px dashed rgba(245,240,235,0.1)",textAlign:"center",color:"rgba(245,240,235,0.3)"}}>Aucune location pour le moment.</div>
-        :transactions.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:16,border:"1px solid rgba(245,240,235,0.06)",marginBottom:8}}>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22,marginBottom:20}}>Historique des locations</h2>
+        {transactions.length===0?<div style={{padding:40,border:"1px dashed rgba(26,22,20,0.1)",textAlign:"center",color:"rgba(26,22,20,0.3)"}}>Aucune location pour le moment.</div>
+        :transactions.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:16,border:"1px solid rgba(26,22,20,0.06)",marginBottom:8}}>
           <div>
             <div style={{fontSize:14,fontWeight:500}}>Location #{t.id}</div>
-            <div style={{fontSize:12,color:"rgba(245,240,235,0.4)"}}>Locataire ID: {t.renter_id || "—"}</div>
+            <div style={{fontSize:12,color:"rgba(26,22,20,0.4)"}}>Locataire ID: {t.renter_id || "—"}</div>
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:16,fontWeight:600,color:"#C9A84C"}}>{t.total}€</div>
-            <span style={{padding:"3px 8px",fontSize:9,letterSpacing:1,border:"1px solid",borderColor:t.status==="completed"?"rgba(93,202,165,0.3)":t.status==="active"?"rgba(201,168,76,0.3)":"rgba(245,240,235,0.1)",color:t.status==="completed"?"#5DCAA5":t.status==="active"?"#C9A84C":"rgba(245,240,235,0.4)"}}>{t.status==="completed"?"TERMINÉE":t.status==="active"?"EN COURS":t.status?.toUpperCase()}</span>
+            <span style={{padding:"3px 8px",fontSize:9,letterSpacing:1,border:"1px solid",borderColor:t.status==="completed"?"rgba(93,202,165,0.3)":t.status==="active"?"rgba(201,168,76,0.3)":"rgba(26,22,20,0.1)",color:t.status==="completed"?"#5DCAA5":t.status==="active"?"#C9A84C":"rgba(26,22,20,0.4)"}}>{t.status==="completed"?"TERMINÉE":t.status==="active"?"EN COURS":t.status?.toUpperCase()}</span>
           </div>
         </div>)}
       </div>
 
       {/* Profile section */}
-      <div style={{marginTop:40,padding:24,border:"1px solid rgba(245,240,235,0.08)"}}>
+      <div style={{marginTop:40,padding:24,border:"1px solid rgba(26,22,20,0.08)"}}>
         <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>MON PROFIL</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
-          <div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:4}}>Nom</div><div style={{fontSize:14}}>{user?.first_name} {user?.last_name}</div></div>
-          <div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:4}}>Email</div><div style={{fontSize:14}}>{user?.email}</div></div>
-          <div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:4}}>Membre depuis</div><div style={{fontSize:14}}>{user?.created_at?new Date(user.created_at).toLocaleDateString("fr-FR"):"—"}</div></div>
+          <div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:4}}>Nom</div><div style={{fontSize:14}}>{user?.first_name} {user?.last_name}</div></div>
+          <div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:4}}>Email</div><div style={{fontSize:14}}>{user?.email}</div></div>
+          <div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:4}}>Membre depuis</div><div style={{fontSize:14}}>{user?.created_at?new Date(user.created_at).toLocaleDateString("fr-FR"):"—"}</div></div>
         </div>
       </div>
     </div>
@@ -837,60 +837,60 @@ function RenterPayment({setScreen,article,txData,showToast}){
   };
 
   if(!article||!txData) return null;
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:600,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PAIEMENT SÉCURISÉ</div>
-      <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400,marginBottom:32}}>Finaliser la réservation</h1>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,marginBottom:32}}>Finaliser la réservation</h1>
 
       {/* Order summary */}
-      <div style={{border:"1px solid rgba(245,240,235,0.08)",padding:24,marginBottom:24}}>
+      <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:24,marginBottom:24}}>
         <div style={{display:"flex",gap:16,marginBottom:20}}>
           <ProductImage brand={article.brand} articleId={article.id} photo={article.photo} style={{width:80,height:80,flexShrink:0}}/>
           <div>
             <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1}}>{article.brand}</div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:17}}>{article.title}</div>
-            <div style={{fontSize:12,color:"rgba(245,240,235,0.4)",marginTop:4}}>{txData.summary?.dates}</div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:17}}>{article.title}</div>
+            <div style={{fontSize:12,color:"rgba(26,22,20,0.4)",marginTop:4}}>{txData.summary?.dates}</div>
           </div>
         </div>
-        <div style={{borderTop:"1px solid rgba(245,240,235,0.06)",paddingTop:16}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:"rgba(245,240,235,0.5)"}}>{txData.summary?.nb_days} jours × {txData.summary?.subtotal/txData.summary?.nb_days}€</span><span>{txData.summary?.subtotal}€</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:"rgba(245,240,235,0.5)"}}>Assurance premium</span><span>{txData.summary?.insurance}€</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:"rgba(245,240,235,0.5)"}}>Caution (bloquée)</span><span style={{color:"rgba(245,240,235,0.4)"}}>{txData.summary?.guarantee_blocked}€</span></div>
+        <div style={{borderTop:"1px solid rgba(26,22,20,0.06)",paddingTop:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:"rgba(26,22,20,0.5)"}}>{txData.summary?.nb_days} jours × {txData.summary?.subtotal/txData.summary?.nb_days}€</span><span>{txData.summary?.subtotal}€</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:"rgba(26,22,20,0.5)"}}>Assurance premium</span><span>{txData.summary?.insurance}€</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:"rgba(26,22,20,0.5)"}}>Caution (bloquée)</span><span style={{color:"rgba(26,22,20,0.4)"}}>{txData.summary?.guarantee_blocked}€</span></div>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:16,paddingTop:12,borderTop:"1px solid rgba(201,168,76,0.2)",fontWeight:600}}><span style={{color:"#C9A84C"}}>Total à payer</span><span style={{color:"#C9A84C"}}>{txData.summary?.total}€</span></div>
         </div>
       </div>
 
       {!paid?<>
       {/* Card form */}
-      <div style={{border:"1px solid rgba(245,240,235,0.08)",padding:24,marginBottom:24}}>
+      <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:24,marginBottom:24}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20}}>
           <span style={{fontSize:16}}>💳</span>
           <span style={{fontSize:12,letterSpacing:2,color:"#C9A84C"}}>CARTE BANCAIRE</span>
           <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-            {["VISA","MC"].map(c=><span key={c} style={{padding:"2px 8px",fontSize:9,border:"1px solid rgba(245,240,235,0.1)",color:"rgba(245,240,235,0.3)"}}>{c}</span>)}
+            {["VISA","MC"].map(c=><span key={c} style={{padding:"2px 8px",fontSize:9,border:"1px solid rgba(26,22,20,0.1)",color:"rgba(26,22,20,0.3)"}}>{c}</span>)}
           </div>
         </div>
         <div style={{display:"grid",gap:16}}>
-          <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Numéro de carte</label>
-          <input value={cardNum} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,16);v=v.replace(/(.{4})/g,"$1 ").trim();setCardNum(v);}} placeholder="4242 4242 4242 4242" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:16,letterSpacing:2,boxSizing:"border-box",fontFamily:"'DM Sans',monospace"}}/></div>
+          <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Numéro de carte</label>
+          <input value={cardNum} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,16);v=v.replace(/(.{4})/g,"$1 ").trim();setCardNum(v);}} placeholder="4242 4242 4242 4242" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:16,letterSpacing:2,boxSizing:"border-box",fontFamily:"'Montserrat',monospace"}}/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>Expiration</label><input value={expiry} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,4);if(v.length>2)v=v.substring(0,2)+"/"+v.substring(2);setExpiry(v);}} placeholder="MM/YY" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box"}}/></div>
-            <div><label style={{fontSize:11,color:"rgba(245,240,235,0.45)",display:"block",marginBottom:6}}>CVV</label><input value={cvv} onChange={e=>setCvv(e.target.value.replace(/\D/g,"").substring(0,3))} placeholder="123" type="password" style={{width:"100%",padding:"12px 14px",background:"rgba(245,240,235,0.04)",border:"1px solid rgba(245,240,235,0.1)",color:"#F5F0EB",fontSize:14,boxSizing:"border-box"}}/></div>
+            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Expiration</label><input value={expiry} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,4);if(v.length>2)v=v.substring(0,2)+"/"+v.substring(2);setExpiry(v);}} placeholder="MM/YY" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
+            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>CVV</label><input value={cvv} onChange={e=>setCvv(e.target.value.replace(/\D/g,"").substring(0,3))} placeholder="123" type="password" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
           </div>
         </div>
       </div>
 
-      <button onClick={processPayment} disabled={paying||cardNum.length<19} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:cardNum.length>=19?"#C9A84C":"rgba(245,240,235,0.08)",color:cardNum.length>=19?"#141110":"rgba(245,240,235,0.25)",cursor:cardNum.length>=19?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours...":"PAYER "+txData.summary?.total+"€ — STRIPE SÉCURISÉ"}</button>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12}}><span style={{fontSize:12}}>🔒</span><span style={{fontSize:11,color:"rgba(245,240,235,0.25)"}}>Paiement sécurisé par Stripe — Chiffrement SSL 256 bits</span></div>
+      <button onClick={processPayment} disabled={paying||cardNum.length<19} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:cardNum.length>=19?"#C9A84C":"rgba(26,22,20,0.08)",color:cardNum.length>=19?"#1A1614":"rgba(26,22,20,0.25)",cursor:cardNum.length>=19?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours...":"PAYER "+txData.summary?.total+"€ — STRIPE SÉCURISÉ"}</button>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12}}><span style={{fontSize:12}}>🔒</span><span style={{fontSize:11,color:"rgba(26,22,20,0.25)"}}>Paiement sécurisé par Stripe — Chiffrement SSL 256 bits</span></div>
       </>
       :<div style={{textAlign:"center",padding:40}}>
         <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 20px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:32,color:"#5DCAA5"}}>✓</span></div>
         <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:8}}>PAIEMENT CONFIRMÉ</div>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:400,marginBottom:8}}>Réservation validée !</h2>
-        <p style={{fontSize:13,color:"rgba(245,240,235,0.45)",marginBottom:24}}>Votre article sera disponible aux dates prévues. Vous recevrez un email de confirmation.</p>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:24,marginBottom:8}}>Réservation validée !</h2>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",marginBottom:24}}>Votre article sera disponible aux dates prévues. Vous recevrez un email de confirmation.</p>
         <div style={{display:"flex",gap:12,justifyContent:"center"}}>
-          <button onClick={()=>setScreen(SCREENS.RENTER_PROFILE)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(245,240,235,0.15)",background:"transparent",color:"#F5F0EB",cursor:"pointer"}}>MES LOCATIONS</button>
-          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>SIMULER LE RETOUR</button>
+          <button onClick={()=>setScreen(SCREENS.RENTER_PROFILE)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>MES LOCATIONS</button>
+          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>SIMULER LE RETOUR</button>
         </div>
       </div>}
     </div>
@@ -911,57 +911,57 @@ function RenterProfile({setScreen,user,showToast}){
   const totalSpent = transactions.reduce((s,t)=>s+(t.total||0),0);
   const getArticle = (id) => articles.find(a=>a.id===id);
 
-  return <div style={{background:"#141110",minHeight:"calc(100vh - 64px)",color:"#F5F0EB"}}>
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:900,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:40}}>
         <div>
           <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>MON ESPACE LOCATAIRE</div>
-          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:400}}>{user?.first_name} {user?.last_name}</h1>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32}}>{user?.first_name} {user?.last_name}</h1>
         </div>
         <div style={{textAlign:"center"}}>
           <div style={{width:80,height:80,borderRadius:"50%",border:"3px solid #C9A84C",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px"}}>
-            <span style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:"#C9A84C"}}>{user?.trust_score?.toFixed(2)||"0.50"}</span>
+            <span style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:"#C9A84C"}}>{user?.trust_score?.toFixed(2)||"0.50"}</span>
           </div>
-          <div style={{fontSize:10,color:"rgba(245,240,235,0.35)",letterSpacing:1}}>SCORE DE CONFIANCE</div>
+          <div style={{fontSize:10,color:"rgba(26,22,20,0.35)",letterSpacing:1}}>SCORE DE CONFIANCE</div>
         </div>
       </div>
 
       {/* Stats */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:40}}>
         {[{v:transactions.length,l:"Locations effectuées",c:"#C9A84C"},{v:totalSpent.toFixed(0)+"€",l:"Total dépensé",c:"#5DCAA5"},{v:transactions.filter(t=>t.status==="active"||t.status==="confirmed").length,l:"En cours",c:"#E07A2F"}].map((s,i)=>
-          <div key={i} style={{padding:"24px 20px",border:"1px solid rgba(245,240,235,0.06)",textAlign:"center"}}>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:s.c,marginBottom:4}}>{s.v}</div>
-            <div style={{fontSize:11,color:"rgba(245,240,235,0.4)",letterSpacing:1}}>{s.l}</div>
+          <div key={i} style={{padding:"24px 20px",border:"1px solid rgba(26,22,20,0.06)",textAlign:"center"}}>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:s.c,marginBottom:4}}>{s.v}</div>
+            <div style={{fontSize:11,color:"rgba(26,22,20,0.4)",letterSpacing:1}}>{s.l}</div>
           </div>
         )}
       </div>
 
       {/* Rental history */}
-      <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:400,marginBottom:20}}>Mes locations</h2>
-      {transactions.length===0?<div style={{padding:40,border:"1px dashed rgba(245,240,235,0.1)",textAlign:"center",color:"rgba(245,240,235,0.3)"}}>Aucune location pour le moment. <span style={{color:"#C9A84C",cursor:"pointer"}} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)}>Explorer le catalogue →</span></div>
-      :transactions.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:16,padding:16,border:"1px solid rgba(245,240,235,0.06)",marginBottom:8}}>
+      <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22,marginBottom:20}}>Mes locations</h2>
+      {transactions.length===0?<div style={{padding:40,border:"1px dashed rgba(26,22,20,0.1)",textAlign:"center",color:"rgba(26,22,20,0.3)"}}>Aucune location pour le moment. <span style={{color:"#C9A84C",cursor:"pointer"}} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)}>Explorer le catalogue →</span></div>
+      :transactions.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:16,padding:16,border:"1px solid rgba(26,22,20,0.06)",marginBottom:8}}>
         <div style={{width:50,height:50,background:"linear-gradient(135deg,rgba(109,46,70,0.2),rgba(201,168,76,0.1))",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,color:"rgba(201,168,76,0.3)"}}>#{t.id}</span>
+          <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,color:"rgba(201,168,76,0.3)"}}>#{t.id}</span>
         </div>
         <div style={{flex:1}}>
           <div style={{fontSize:14,fontWeight:500}}>Location #{t.id}</div>
-          <div style={{fontSize:12,color:"rgba(245,240,235,0.4)"}}>{t.created_at?new Date(t.created_at).toLocaleDateString("fr-FR"):""}</div>
+          <div style={{fontSize:12,color:"rgba(26,22,20,0.4)"}}>{t.created_at?new Date(t.created_at).toLocaleDateString("fr-FR"):""}</div>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:16,fontWeight:600,color:"#C9A84C"}}>{t.total}€</div>
           <span style={{padding:"3px 8px",fontSize:9,letterSpacing:1,border:"1px solid",borderColor:t.status==="completed"?"rgba(93,202,165,0.3)":"rgba(201,168,76,0.3)",color:t.status==="completed"?"#5DCAA5":"#C9A84C"}}>{t.status==="completed"?"TERMINÉE":t.status==="active"?"EN COURS":t.status?.toUpperCase()}</span>
         </div>
-        {(t.status==="active"||t.status==="confirmed")&&<button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:10,letterSpacing:1,padding:"8px 16px",border:"none",background:"#C9A84C",color:"#141110",cursor:"pointer",fontWeight:600}}>RETOUR</button>}
+        {(t.status==="active"||t.status==="confirmed")&&<button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:10,letterSpacing:1,padding:"8px 16px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>RETOUR</button>}
       </div>)}
 
       {/* Profile info */}
-      <div style={{marginTop:40,padding:24,border:"1px solid rgba(245,240,235,0.08)"}}>
+      <div style={{marginTop:40,padding:24,border:"1px solid rgba(26,22,20,0.08)"}}>
         <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>MON PROFIL</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:20}}>
-          <div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:4}}>Nom</div><div style={{fontSize:14}}>{user?.first_name} {user?.last_name}</div></div>
-          <div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:4}}>Email</div><div style={{fontSize:14}}>{user?.email}</div></div>
-          <div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:4}}>Rôle</div><div style={{fontSize:14}}>{user?.role}</div></div>
-          <div><div style={{fontSize:11,color:"rgba(245,240,235,0.35)",marginBottom:4}}>Membre depuis</div><div style={{fontSize:14}}>{user?.created_at?new Date(user.created_at).toLocaleDateString("fr-FR"):"—"}</div></div>
+          <div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:4}}>Nom</div><div style={{fontSize:14}}>{user?.first_name} {user?.last_name}</div></div>
+          <div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:4}}>Email</div><div style={{fontSize:14}}>{user?.email}</div></div>
+          <div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:4}}>Rôle</div><div style={{fontSize:14}}>{user?.role}</div></div>
+          <div><div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginBottom:4}}>Membre depuis</div><div style={{fontSize:14}}>{user?.created_at?new Date(user.created_at).toLocaleDateString("fr-FR"):"—"}</div></div>
         </div>
       </div>
     </div>
@@ -974,7 +974,7 @@ function ModelIA(){
   const [err,setErr]=useState(false);
   useEffect(()=>{ api("/verification/model/info").then(setInfo).catch(()=>setErr(true)); },[]);
 
-  const C={gold:"#C9A84C",cream:"#F5F0EB",muted:"rgba(245,240,235,0.45)",green:"#2D6A4F",berry:"#6D2E46",card:"rgba(245,240,235,0.03)",border:"rgba(245,240,235,0.08)"};
+  const C={gold:"#C9A84C",cream:"#1A1614",muted:"rgba(26,22,20,0.45)",green:"#2D6A4F",berry:"#6D2E46",card:"rgba(26,22,20,0.03)",border:"rgba(26,22,20,0.08)"};
 
   if(err) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Impossible de charger la fiche du modèle.</div>;
   if(!info) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Chargement de la fiche modèle…</div>;
@@ -992,7 +992,7 @@ function ModelIA(){
 
   return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px clamp(16px,4vw,24px)"}}>
     <div style={{display:"flex",alignItems:"baseline",gap:14,marginBottom:6}}>
-      <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:30,color:C.cream,margin:0}}>Modèle de détection de contrefaçon</h1>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:30,color:C.cream,margin:0}}>Modèle de détection de contrefaçon</h1>
       <span style={{fontSize:11,letterSpacing:1,padding:"3px 12px",background:"rgba(201,168,76,0.12)",color:C.gold,border:`1px solid rgba(201,168,76,0.3)`}}>RANDOM FOREST v1</span>
     </div>
     <p style={{color:C.muted,fontSize:13,marginBottom:32}}>{info.modele} · {info.jeu_de_donnees.taille_totale} échantillons ({info.jeu_de_donnees.entrainement} entraînement / {info.jeu_de_donnees.test} test) · 9 features d'image</p>
@@ -1002,7 +1002,7 @@ function ModelIA(){
       {metricCards.map(c=>
         <div key={c.l} style={{padding:"20px",background:C.card,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,letterSpacing:1,color:C.muted,marginBottom:8}}>{c.l.toUpperCase()}</div>
-          <div style={{fontSize:30,fontFamily:"'Playfair Display',serif",color:C.gold}}>{c.v}</div>
+          <div style={{fontSize:30,fontFamily:"'Montserrat',sans-serif",color:C.gold}}>{c.v}</div>
         </div>
       )}
     </div>
@@ -1011,7 +1011,7 @@ function ModelIA(){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:36}}>
       {/* Matrice de confusion */}
       <div>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:C.cream,marginBottom:14}}>Matrice de confusion</h2>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Matrice de confusion</h2>
         <div style={{display:"grid",gridTemplateColumns:"70px 1fr 1fr",gap:6,fontSize:11}}>
           <div></div>
           <div style={{textAlign:"center",color:C.muted,paddingBottom:4}}>Prédit faux</div>
@@ -1038,14 +1038,14 @@ function ModelIA(){
       </div>
       {/* Importance des features */}
       <div>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:C.cream,marginBottom:14}}>Importance des features</h2>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Importance des features</h2>
         <div style={{display:"flex",flexDirection:"column",gap:9}}>
           {info.importance_features.map(f=>
             <div key={f.feature}>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.cream,marginBottom:3}}>
                 <span>{f.feature}</span><span style={{color:C.muted}}>{(f.importance*100).toFixed(1)} %</span>
               </div>
-              <div style={{height:8,background:"rgba(245,240,235,0.06)"}}>
+              <div style={{height:8,background:"rgba(26,22,20,0.06)"}}>
                 <div style={{height:8,width:`${(f.importance/maxImp*100).toFixed(0)}%`,background:C.gold}}></div>
               </div>
             </div>
