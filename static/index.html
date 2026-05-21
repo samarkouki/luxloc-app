@@ -52,6 +52,8 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     @keyframes slideIn{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 
     .toast{
       position:fixed;bottom:24px;right:24px;padding:15px 26px;
@@ -218,71 +220,204 @@ function Nav({screen,setScreen,user,onLogout}){
 
 // ═══ LANDING ═══
 function Landing({setScreen,articles,stats}){
-  const [role,setRole]=useState(null);
-  const [hCat,setHCat]=useState(null);
   const [loaded,setLoaded]=useState(false);
+  const [hCat,setHCat]=useState(null);
+  const [hovered,setHovered]=useState(null);
   useEffect(()=>{setTimeout(()=>setLoaded(true),100)},[]);
 
-  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
-    <section style={{position:"relative",overflow:"hidden",padding:"clamp(40px,8vw,100px) clamp(16px,4vw,48px) clamp(30px,6vw,80px)",display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",minHeight:480}}>
-      <div style={{position:"absolute",top:-120,right:-120,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.06) 0%,transparent 70%)"}}/>
-      <div style={{opacity:loaded?1:0,transform:loaded?"translateY(0)":"translateY(30px)",transition:"all 0.8s cubic-bezier(0.16,1,0.3,1)"}}>
-        <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",textTransform:"uppercase",marginBottom:20}}>Plateforme de location premium</div>
-        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(32px,4vw,56px)",fontWeight:400,lineHeight:1.15,marginBottom:20}}>Le luxe n'est plus<br/>une question de<br/><span style={{fontStyle:"italic",color:"#C9A84C"}}>possession</span></h1>
-        <p style={{fontSize:15,lineHeight:1.7,color:"rgba(26,22,20,0.55)",maxWidth:420,marginBottom:32}}>Accédez aux plus belles pièces du monde ou rentabilisez votre collection. Chaque article est vérifié par notre système d'authentification avancé.</p>
-        <div style={{display:"flex",gap:12}}>
-          <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>EXPLORER LE CATALOGUE</button>
-          <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:13,letterSpacing:1,padding:"14px 32px",border:"1px solid rgba(201,168,76,0.4)",background:"transparent",color:"#C9A84C",cursor:"pointer"}}>METTRE EN LOCATION</button>
+  // Pieces choisies pour l empilement du hero
+  const withPhoto = (articles||[]).filter(a=>a.photo);
+  const feat = (withPhoto.length>=2 ? withPhoto : (articles||[])).slice(0,3);
+  const featuredGrid = (articles||[]).slice(0,4);
+
+  const fadeIn = (delay=0) => ({
+    opacity: loaded?1:0,
+    transform: loaded?"translateY(0)":"translateY(28px)",
+    transition: `opacity 1s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 1s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
+  });
+
+  return <div style={{background:"#FAF8F4",color:"#1A1614",overflowX:"hidden"}}>
+
+    {/* ════ HERO ════ */}
+    <section style={{position:"relative",padding:"clamp(60px,9vw,140px) clamp(20px,5vw,80px) clamp(40px,6vw,80px)",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-150,right:-200,width:780,height:780,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.10) 0%,transparent 60%)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",bottom:-200,left:-160,width:520,height:520,borderRadius:"50%",background:"radial-gradient(circle,rgba(109,46,70,0.06) 0%,transparent 65%)",pointerEvents:"none"}}/>
+
+      <div style={{maxWidth:1380,margin:"0 auto",display:"grid",gridTemplateColumns:"1.05fr 0.95fr",gap:"clamp(40px,5vw,90px)",alignItems:"center",position:"relative"}}>
+
+        {/* Cote texte */}
+        <div style={fadeIn(0)}>
+          <div style={{fontSize:11,letterSpacing:5,color:"#8a6e26",marginBottom:36,fontWeight:600,display:"flex",alignItems:"center",gap:14}}>
+            <span style={{display:"inline-block",width:36,height:1,background:"#C9A84C"}}/>
+            MAISON DE LOCATION · PARIS 2026
+          </div>
+
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(46px,7vw,112px)",fontWeight:300,lineHeight:0.94,marginBottom:36,letterSpacing:"-0.025em"}}>
+            Le luxe<br/>
+            <span style={{fontWeight:700}}>se partage</span><br/>
+            <span style={{fontStyle:"italic",fontWeight:400,color:"#C9A84C"}}>desormais</span>.
+          </h1>
+
+          <p style={{fontSize:17,lineHeight:1.65,color:"rgba(26,22,20,0.6)",maxWidth:500,marginBottom:48,fontWeight:400}}>
+            Une nouvelle facon d'acceder aux pieces les plus rares — verifiees une a une par notre intelligence artificielle. Authenticite garantie, elegance accessible.
+          </p>
+
+          <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+            <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:12,letterSpacing:2,padding:"20px 40px",border:"none",background:"#1A1614",color:"#FAF8F4",cursor:"pointer",fontWeight:600}}>EXPLORER LA COLLECTION →</button>
+            <button onClick={()=>setScreen(SCREENS.OWNER_VERIFY)} style={{fontSize:12,letterSpacing:2,padding:"20px 40px",border:"1px solid rgba(26,22,20,0.22)",background:"transparent",color:"#1A1614",cursor:"pointer",fontWeight:600}}>METTRE EN LOCATION</button>
+          </div>
         </div>
-      </div>
-      <div style={{display:"flex",justifyContent:"center",opacity:loaded?1:0,transform:loaded?"translateX(0)":"translateX(40px)",transition:"all 1s cubic-bezier(0.16,1,0.3,1) 0.2s"}}>
-        <div style={{position:"relative"}}>
-          <div style={{width:280,height:340,background:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Montserrat',sans-serif",fontSize:72,color:"rgba(201,168,76,0.2)"}}>H</span></div>
-          <div style={{position:"absolute",top:30,left:-40,width:180,height:220,background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.15)"}}/>
-          <div style={{position:"absolute",bottom:-20,right:-30,padding:"12px 20px",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(201,168,76,0.2)"}}>
-            <div style={{fontSize:10,color:"#C9A84C",letterSpacing:2,marginBottom:4}}>VÉRIFIÉ</div>
-            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,color:"#1A1614"}}>Score 0.96</div>
+
+        {/* Cote visuel — pile de cartes asymetriques */}
+        <div style={{position:"relative",height:"clamp(440px,52vh,600px)",...fadeIn(0.25)}}>
+
+          {/* Carte arriere (decorative) */}
+          <div style={{position:"absolute",top:30,left:"6%",width:"56%",height:"68%",background:"linear-gradient(155deg,#6D2E46 0%,#1A1614 100%)",transform:"rotate(-5deg)",boxShadow:"0 22px 60px rgba(26,22,20,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(80px,11vw,160px)",color:"rgba(201,168,76,0.16)",fontWeight:200}}>{feat[0]?.brand?.[0]||"H"}</span>
+          </div>
+
+          {/* Carte milieu — produit principal */}
+          <div style={{position:"absolute",top:"12%",left:"28%",width:"60%",height:"82%",background:"#FFFFFF",boxShadow:"0 32px 90px rgba(26,22,20,0.18)",transform:"rotate(2.5deg)",overflow:"hidden",border:"1px solid rgba(26,22,20,0.04)"}}>
+            <div style={{height:"72%",background:feat[1]?.photo?`url(${feat[1].photo}) center/cover`:"linear-gradient(160deg,#E8E0D0 0%,#A89878 100%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {!feat[1]?.photo&&<span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(60px,9vw,130px)",color:"rgba(26,22,20,0.18)",fontWeight:200}}>{feat[1]?.brand?.[0]||"C"}</span>}
+            </div>
+            <div style={{padding:"20px 24px"}}>
+              <div style={{fontSize:9,letterSpacing:2.5,color:"#C9A84C",marginBottom:6,fontWeight:600}}>{(feat[1]?.brand||"LOUIS VUITTON").toUpperCase()}</div>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,marginBottom:8}}>{feat[1]?.title||"Speedy 25"}</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                <span style={{fontSize:13,color:"rgba(26,22,20,0.5)"}}>{feat[1]?.price_per_day||85}€ / jour</span>
+                <span style={{fontSize:10,letterSpacing:1.5,color:"#1f5a3d",fontWeight:600}}>● VÉRIFIÉ</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Badge IA flottant */}
+          <div style={{position:"absolute",bottom:"4%",right:"2%",padding:"18px 24px",background:"#1A1614",color:"#FAF8F4",boxShadow:"0 14px 44px rgba(26,22,20,0.32)",animation:"float 5s ease-in-out infinite"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#5DCAA5",boxShadow:"0 0 14px rgba(93,202,165,0.8)"}}/>
+              <div style={{fontSize:9,letterSpacing:2.5,color:"#C9A84C",fontWeight:600}}>VÉRIFIÉ IA</div>
+            </div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:600,letterSpacing:"-0.02em"}}>0.96</div>
+            <div style={{fontSize:10,color:"rgba(245,240,235,0.55)",marginTop:2,letterSpacing:0.5}}>score d'authenticité</div>
           </div>
         </div>
       </div>
-    </section>
 
-    <section style={{padding:"60px clamp(16px,4vw,48px)",borderTop:"1px solid rgba(201,168,76,0.08)"}}>
-      <div style={{textAlign:"center",marginBottom:40}}>
-        <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>VOTRE EXPÉRIENCE</div>
-        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28}}>Comment souhaitez-vous utiliser LUXLOC ?</h2>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,maxWidth:700,margin:"0 auto"}}>
-        {[{r:"renter",title:"Je veux louer",sub:"Accédez aux plus belles pièces",icon:"✦",screen:SCREENS.RENTER_BROWSE},{r:"owner",title:"Je veux mettre en location",sub:"Rentabilisez votre collection",icon:"◈",screen:SCREENS.OWNER_VERIFY}].map(item=>
-          <div key={item.r} onClick={()=>setScreen(item.screen)} onMouseEnter={()=>setRole(item.r)} onMouseLeave={()=>setRole(null)} style={{cursor:"pointer",padding:32,border:`1px solid ${role===item.r?"rgba(201,168,76,0.5)":"rgba(26,22,20,0.08)"}`,background:role===item.r?"rgba(201,168,76,0.04)":"transparent",transition:"all 0.3s"}}>
-            <div style={{fontSize:24,marginBottom:16,color:"#C9A84C"}}>{item.icon}</div>
-            <h3 style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:400,marginBottom:8}}>{item.title}</h3>
-            <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",lineHeight:1.6}}>{item.sub}</p>
+      {/* Stats sous le hero */}
+      <div style={{maxWidth:1380,margin:"clamp(60px,8vw,100px) auto 0",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0,borderTop:"1px solid rgba(26,22,20,0.1)",paddingTop:36,...fadeIn(0.5)}}>
+        {[{v:(stats?.articles||8)+"+",l:"PIÈCES CERTIFIÉES"},{v:"99.1%",l:"AUTHENTIFICATION"},{v:"<15s",l:"PAR ARTICLE"},{v:"4.9/5",l:"SATISFACTION"}].map((s,i)=>
+          <div key={i} style={{padding:"0 28px",borderLeft:i>0?"1px solid rgba(26,22,20,0.08)":"none"}}>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(28px,3vw,42px)",fontWeight:300,marginBottom:8,letterSpacing:"-0.015em"}}>{s.v}</div>
+            <div style={{fontSize:10,letterSpacing:2,color:"rgba(26,22,20,0.5)",fontWeight:600}}>{s.l}</div>
           </div>
         )}
       </div>
     </section>
 
-    <section style={{padding:"60px clamp(16px,4vw,48px) 80px",borderTop:"1px solid rgba(201,168,76,0.08)"}}>
-      <div style={{marginBottom:32}}><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>CATÉGORIES</div><h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28}}>Explorez par univers</h2></div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12}}>
-        {categories.map(cat=>{const count=articles.filter(a=>a.category===cat.id).length;return <div key={cat.id} onMouseEnter={()=>setHCat(cat.id)} onMouseLeave={()=>setHCat(null)} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{cursor:"pointer",padding:"28px 20px",textAlign:"center",border:`1px solid ${hCat===cat.id?"rgba(201,168,76,0.4)":"rgba(26,22,20,0.06)"}`,background:hCat===cat.id?"rgba(201,168,76,0.03)":"transparent",transition:"all 0.3s"}}>
-          <div style={{fontSize:28,marginBottom:12}}>{cat.icon}</div>
-          <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,marginBottom:4}}>{cat.label}</div>
-          <div style={{fontSize:11,color:"rgba(26,22,20,0.35)"}}>{count} pièces</div>
-        </div>})}
+    {/* ════ MANIFESTO ════ */}
+    <section style={{padding:"clamp(80px,10vw,160px) clamp(20px,5vw,80px)",background:"#1A1614",color:"#FAF8F4",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:1400,height:700,background:"radial-gradient(ellipse,rgba(201,168,76,0.10) 0%,transparent 65%)",pointerEvents:"none"}}/>
+      <div style={{maxWidth:1100,margin:"0 auto",textAlign:"center",position:"relative"}}>
+        <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:36,fontWeight:600}}>— MANIFESTO —</div>
+        <p style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(24px,3.2vw,48px)",fontWeight:300,lineHeight:1.3,letterSpacing:"-0.015em"}}>
+          « Posséder un bel objet n'est plus<br/>
+          la seule manière de l'apprécier.<br/>
+          <span style={{fontStyle:"italic",color:"#C9A84C"}}>Le porter,&nbsp;l'éprouver,</span> peut suffire. »
+        </p>
+        <div style={{marginTop:40,fontSize:11,letterSpacing:3,color:"rgba(245,240,235,0.4)",fontWeight:500}}>LUXLOC, 2026</div>
       </div>
     </section>
 
-    <section style={{padding:"48px clamp(16px,4vw,48px)",borderTop:"1px solid rgba(201,168,76,0.08)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:"rgba(201,168,76,0.08)"}}>
-      {[{v:stats.articles||0,l:"Articles disponibles"},{v:"99.1%",l:"Taux d'authentification"},{v:"< 15s",l:"Analyse par article"},{v:"4.9/5",l:"Satisfaction locataires"}].map((s,i)=>
-        <div key={i} style={{padding:"28px 24px",textAlign:"center",background:"#FAF8F4"}}>
-          <div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:"#C9A84C",marginBottom:6}}>{s.v}</div>
-          <div style={{fontSize:11,color:"rgba(26,22,20,0.4)",letterSpacing:1}}>{s.l}</div>
+    {/* ════ HOW IT WORKS ════ */}
+    <section style={{padding:"clamp(80px,10vw,140px) clamp(20px,5vw,80px)"}}>
+      <div style={{maxWidth:1300,margin:"0 auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1.4fr",gap:60,marginBottom:72,alignItems:"end"}}>
+          <div>
+            <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:18,fontWeight:600}}>EXPÉRIENCE</div>
+            <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(40px,5vw,76px)",fontWeight:300,lineHeight:1,letterSpacing:"-0.025em"}}>
+              Trois<br/><span style={{fontStyle:"italic",color:"#C9A84C"}}>gestes simples.</span>
+            </h2>
+          </div>
+          <p style={{fontSize:17,lineHeight:1.6,color:"rgba(26,22,20,0.6)",maxWidth:500,justifySelf:"end"}}>
+            De la mise en ligne à la restitution, chaque étape est pensée pour préserver l'élégance — et garantir l'authenticité.
+          </p>
         </div>
-      )}
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:0}}>
+          {[
+            {n:"01",t:"Déposez",d:"Une fiche, quatre photos. Notre IA analyse logo, coutures, texture, étiquette et facture en moins de quinze secondes."},
+            {n:"02",t:"Louez",d:"Parcourez le catalogue, réservez en quelques clics. Assurance premium et caution sécurisée incluses."},
+            {n:"03",t:"Restituez",d:"Retour documenté, caution restituée automatiquement. Vous gardez le souvenir d'une expérience unique."}
+          ].map((step,i)=>(
+            <div key={i} style={{padding:"40px 32px 0",borderTop:"1px solid rgba(26,22,20,0.2)",borderLeft:i>0?"1px solid rgba(26,22,20,0.08)":"none"}}>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(48px,5vw,72px)",fontWeight:200,color:"#C9A84C",marginBottom:28,letterSpacing:"-0.03em"}}>{step.n}</div>
+              <h3 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:600,marginBottom:16,letterSpacing:"-0.01em"}}>{step.t}</h3>
+              <p style={{fontSize:14.5,lineHeight:1.65,color:"rgba(26,22,20,0.6)"}}>{step.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
-  </div>
+
+    {/* ════ FEATURED — selection editoriale ════ */}
+    {featuredGrid.length>0 && <section style={{padding:"clamp(60px,8vw,120px) clamp(20px,5vw,80px)",background:"#FFFFFF",borderTop:"1px solid rgba(26,22,20,0.06)",borderBottom:"1px solid rgba(26,22,20,0.06)"}}>
+      <div style={{maxWidth:1380,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"end",marginBottom:48,flexWrap:"wrap",gap:20}}>
+          <div>
+            <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:14,fontWeight:600}}>SÉLECTION</div>
+            <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(32px,4vw,56px)",fontWeight:300,letterSpacing:"-0.02em"}}>Pièces du <span style={{fontStyle:"italic",color:"#C9A84C"}}>moment</span></h2>
+          </div>
+          <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:11,letterSpacing:2,padding:"14px 28px",border:"1px solid rgba(26,22,20,0.2)",background:"transparent",color:"#1A1614",cursor:"pointer",fontWeight:600}}>VOIR TOUT →</button>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:24}}>
+          {featuredGrid.map(a=><div key={a.id} onMouseEnter={()=>setHovered(a.id)} onMouseLeave={()=>setHovered(null)} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{cursor:"pointer",background:"#FFFFFF",transition:"all 0.4s cubic-bezier(0.2,0.8,0.2,1)",transform:hovered===a.id?"translateY(-6px)":"translateY(0)"}}>
+            <div style={{aspectRatio:"3/4",background:a.photo?`url(${a.photo}) center/cover`:"linear-gradient(160deg,#F0E8D8 0%,#C4B89C 100%)",position:"relative",overflow:"hidden",marginBottom:16}}>
+              {!a.photo&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Montserrat',sans-serif",fontSize:80,color:"rgba(26,22,20,0.15)",fontWeight:200}}>{a.brand?.[0]||"?"}</span></div>}
+              {a.verification_score>=0.85&&<div style={{position:"absolute",top:14,right:14,padding:"5px 11px",background:"rgba(255,255,255,0.95)",backdropFilter:"blur(8px)",fontSize:9,letterSpacing:1.5,color:"#1f5a3d",fontWeight:600}}>● VÉRIFIÉ</div>}
+            </div>
+            <div style={{padding:"0 4px"}}>
+              <div style={{fontSize:10,letterSpacing:2,color:"#C9A84C",marginBottom:6,fontWeight:600}}>{a.brand?.toUpperCase()}</div>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:500,marginBottom:6}}>{a.title}</div>
+              <div style={{fontSize:13,color:"rgba(26,22,20,0.55)"}}>{a.price_per_day}€ / jour</div>
+            </div>
+          </div>)}
+        </div>
+      </div>
+    </section>}
+
+    {/* ════ CATEGORIES ════ */}
+    <section style={{padding:"clamp(80px,10vw,140px) clamp(20px,5vw,80px)"}}>
+      <div style={{maxWidth:1300,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:56}}>
+          <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:16,fontWeight:600}}>CATÉGORIES</div>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(32px,4vw,56px)",fontWeight:300,letterSpacing:"-0.02em"}}>Explorez par <span style={{fontStyle:"italic",color:"#C9A84C"}}>univers</span></h2>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:0,border:"1px solid rgba(26,22,20,0.1)"}}>
+          {categories.map((cat,i)=>{const count=(articles||[]).filter(a=>a.category===cat.id).length;return <div key={cat.id} onMouseEnter={()=>setHCat(cat.id)} onMouseLeave={()=>setHCat(null)} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{cursor:"pointer",padding:"44px 24px",textAlign:"center",background:hCat===cat.id?"#FAF8F4":"#FFFFFF",borderLeft:i>0?"1px solid rgba(26,22,20,0.08)":"none",transition:"all 0.4s cubic-bezier(0.2,0.8,0.2,1)"}}>
+            <div style={{fontSize:42,marginBottom:18,transform:hCat===cat.id?"scale(1.12)":"scale(1)",transition:"transform 0.4s cubic-bezier(0.2,0.8,0.2,1)"}}>{cat.icon}</div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,marginBottom:8,letterSpacing:"-0.005em"}}>{cat.label}</div>
+            <div style={{fontSize:10,letterSpacing:2,color:"rgba(26,22,20,0.4)",fontWeight:600}}>{count} PIÈCE{count!==1?"S":""}</div>
+          </div>;})}
+        </div>
+      </div>
+    </section>
+
+    {/* ════ CTA FINAL ════ */}
+    <section style={{padding:"clamp(80px,10vw,160px) clamp(20px,5vw,80px)",textAlign:"center",background:"linear-gradient(180deg,#FAF8F4 0%,#F0E8D8 100%)"}}>
+      <div style={{maxWidth:820,margin:"0 auto"}}>
+        <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:24,fontWeight:600}}>REJOIGNEZ LA MAISON</div>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(40px,5.5vw,84px)",fontWeight:300,lineHeight:1.02,marginBottom:36,letterSpacing:"-0.025em"}}>
+          Prêt à <span style={{fontStyle:"italic",color:"#C9A84C"}}>commencer</span> ?
+        </h2>
+        <p style={{fontSize:17,lineHeight:1.65,color:"rgba(26,22,20,0.6)",marginBottom:44,maxWidth:560,margin:"0 auto 44px"}}>
+          Accédez gratuitement aux pièces de la collection découverte. La première location est offerte aux premiers utilisateurs.
+        </p>
+        <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:12,letterSpacing:2,padding:"22px 56px",border:"none",background:"#1A1614",color:"#FAF8F4",cursor:"pointer",fontWeight:600}}>COMMENCER L'EXPÉRIENCE →</button>
+      </div>
+    </section>
+
+  </div>;
 }
 
 // ═══ OWNER VERIFY ═══
