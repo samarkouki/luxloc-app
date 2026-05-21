@@ -54,6 +54,11 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
     @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .reveal{opacity:0;transform:translateY(40px);transition:opacity 1.1s cubic-bezier(0.16,1,0.3,1),transform 1.1s cubic-bezier(0.16,1,0.3,1)}
+    .reveal.in{opacity:1;transform:translateY(0)}
+    .marquee-track{display:flex;gap:60px;animation:marquee 50s linear infinite;width:max-content;will-change:transform}
+    .marquee-track:hover{animation-play-state:paused}
 
     .toast{
       position:fixed;bottom:24px;right:24px;padding:15px 26px;
@@ -187,10 +192,66 @@ function AuthScreen({onLogin, showToast}) {
   </div>
 }
 const categories = [
-  {id:"bags",label:"Sacs",icon:"👜"},{id:"watches",label:"Montres",icon:"⌚"},
-  {id:"jewelry",label:"Bijoux",icon:"💎"},{id:"clothing",label:"Vêtements",icon:"🧥"},
-  {id:"eyewear",label:"Lunettes",icon:"🕶"}
+  {id:"bags",label:"Sacs",icon:"bag"},{id:"watches",label:"Montres",icon:"watch"},
+  {id:"jewelry",label:"Bijoux",icon:"jewel"},{id:"clothing",label:"Vêtements",icon:"hanger"},
+  {id:"eyewear",label:"Lunettes",icon:"glasses"}
 ];
+
+// Icônes vectorielles raffinées — trait fin, élégance graphique
+const ICON_PATHS = {
+  bag: <><path d="M8 14 L24 14 L23 27 L9 27 Z"/><path d="M12 14 V10 a4 4 0 0 1 8 0 V14"/><circle cx="11" cy="18" r="0.6" fill="currentColor"/><circle cx="21" cy="18" r="0.6" fill="currentColor"/></>,
+  watch: <><circle cx="16" cy="16" r="6.5"/><path d="M12.5 9.5 L13.5 4.5 L18.5 4.5 L19.5 9.5 M12.5 22.5 L13.5 27.5 L18.5 27.5 L19.5 22.5"/><circle cx="23" cy="13.5" r="0.9"/><path d="M16 12.5 V16 L18.5 17.5"/></>,
+  jewel: <><path d="M10 9 L22 9 L27 15 L16 27 L5 15 Z"/><path d="M10 9 L16 15 L22 9"/><path d="M5 15 L27 15"/><path d="M16 15 V27"/></>,
+  hanger: <><circle cx="16" cy="7" r="2"/><path d="M16 9 V12 L4 21 L28 21 L16 12"/></>,
+  glasses: <><circle cx="10" cy="17" r="5"/><circle cx="22" cy="17" r="5"/><path d="M15 17 L17 17"/><path d="M5 14 L2.5 12 M27 14 L29.5 12"/></>,
+  // Icônes utilitaires
+  arrow: <path d="M6 16 L26 16 M19 9 L26 16 L19 23"/>,
+  check: <path d="M7 16 L13 22 L25 10"/>,
+  shield: <><path d="M16 4 L26 8 V16 a10 12 0 0 1 -10 12 a10 12 0 0 1 -10 -12 V8 Z"/><path d="M11 16 L15 20 L21 12"/></>,
+  sparkle: <><path d="M16 6 L17.5 14.5 L26 16 L17.5 17.5 L16 26 L14.5 17.5 L6 16 L14.5 14.5 Z"/></>,
+};
+
+function Icon({name, size=28, color="currentColor", stroke=1.4}) {
+  const path = ICON_PATHS[name];
+  if(!path) return null;
+  return <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle"}}>{path}</svg>;
+}
+
+// Révélation au scroll — fait apparaître les sections en glissant vers le haut
+function Reveal({children, delay=0, style={}}) {
+  const ref = React.useRef(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    if(!ref.current) return;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if(e.isIntersecting){setInView(true); obs.disconnect();}});
+    }, {threshold:0.12, rootMargin:"0px 0px -60px 0px"});
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return <div ref={ref} className={"reveal"+(inView?" in":"")} style={{...style, transitionDelay:`${delay}s`}}>{children}</div>;
+}
+
+// Parallaxe doux : la cible suit le curseur avec un effet d'inertie
+function useMouseTilt(strength=12) {
+  const ref = React.useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if(!el) return;
+    const parent = el.closest("section") || el.parentElement;
+    const onMove = (e) => {
+      const r = parent.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      const y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      el.style.transform = `perspective(1200px) rotateY(${x*strength*0.4}deg) rotateX(${-y*strength*0.4}deg) translateX(${x*strength}px) translateY(${y*strength}px)`;
+    };
+    const onLeave = () => { el.style.transform = ""; };
+    parent.addEventListener("mousemove", onMove);
+    parent.addEventListener("mouseleave", onLeave);
+    return () => { parent.removeEventListener("mousemove", onMove); parent.removeEventListener("mouseleave", onLeave); };
+  }, [strength]);
+  return ref;
+}
 
 // ═══ TOAST ═══
 function Toast({msg,onDone}){useEffect(()=>{const t=setTimeout(onDone,3000);return()=>clearTimeout(t)},[]);return <div className="toast">{msg}</div>}
@@ -235,6 +296,7 @@ function Landing({setScreen,articles,stats}){
     transform: loaded?"translateY(0)":"translateY(28px)",
     transition: `opacity 1s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 1s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
   });
+  const tiltRef = useMouseTilt(10);
 
   return <div style={{background:"#FAF8F4",color:"#1A1614",overflowX:"hidden"}}>
 
@@ -269,7 +331,7 @@ function Landing({setScreen,articles,stats}){
         </div>
 
         {/* Cote visuel — pile de cartes asymetriques */}
-        <div style={{position:"relative",height:"clamp(440px,52vh,600px)",...fadeIn(0.25)}}>
+        <div ref={tiltRef} style={{position:"relative",height:"clamp(440px,52vh,600px)",transition:"transform .4s cubic-bezier(0.2,0.8,0.2,1)",...fadeIn(0.25)}}>
 
           {/* Carte arriere (decorative) */}
           <div style={{position:"absolute",top:30,left:"6%",width:"56%",height:"68%",background:"linear-gradient(155deg,#6D2E46 0%,#1A1614 100%)",transform:"rotate(-5deg)",boxShadow:"0 22px 60px rgba(26,22,20,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -314,10 +376,27 @@ function Landing({setScreen,articles,stats}){
       </div>
     </section>
 
+    {/* ════ MAISONS DE PRESTIGE — bande défilante ════ */}
+    <section style={{padding:"clamp(36px,5vw,56px) 0",borderTop:"1px solid rgba(26,22,20,0.08)",borderBottom:"1px solid rgba(26,22,20,0.08)",background:"#FFFFFF",overflow:"hidden"}}>
+      <div style={{textAlign:"center",fontSize:10,letterSpacing:5,color:"rgba(26,22,20,0.4)",marginBottom:28,fontWeight:600}}>MAISONS REPRÉSENTÉES SUR LA PLATEFORME</div>
+      <div className="marquee-track">
+        {[...Array(2)].map((_,k)=>
+          <div key={k} style={{display:"flex",gap:60,paddingRight:60,alignItems:"center"}}>
+            {["LOUIS VUITTON","HERMÈS","CHANEL","GUCCI","ROLEX","DIOR","CARTIER","PRADA","BURBERRY","VAN CLEEF & ARPELS","RAY-BAN","SAINT LAURENT","BOTTEGA VENETA","TOMMY HILFIGER"].map((b,i)=>
+              <span key={b+k} style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(20px,2vw,28px)",fontWeight:300,letterSpacing:"0.12em",color:"#1A1614",whiteSpace:"nowrap",position:"relative"}}>
+                {b}
+                {i<13&&<span style={{display:"inline-block",width:5,height:5,borderRadius:"50%",background:"#C9A84C",marginLeft:60,verticalAlign:"middle"}}/>}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+
     {/* ════ MANIFESTO ════ */}
     <section style={{padding:"clamp(80px,10vw,160px) clamp(20px,5vw,80px)",background:"#1A1614",color:"#FAF8F4",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:1400,height:700,background:"radial-gradient(ellipse,rgba(201,168,76,0.10) 0%,transparent 65%)",pointerEvents:"none"}}/>
-      <div style={{maxWidth:1100,margin:"0 auto",textAlign:"center",position:"relative"}}>
+      <Reveal><div style={{maxWidth:1100,margin:"0 auto",textAlign:"center",position:"relative"}}>
         <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:36,fontWeight:600}}>— MANIFESTO —</div>
         <p style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(24px,3.2vw,48px)",fontWeight:300,lineHeight:1.3,letterSpacing:"-0.015em"}}>
           « Posséder un bel objet n'est plus<br/>
@@ -325,12 +404,12 @@ function Landing({setScreen,articles,stats}){
           <span style={{fontStyle:"italic",color:"#C9A84C"}}>Le porter,&nbsp;l'éprouver,</span> peut suffire. »
         </p>
         <div style={{marginTop:40,fontSize:11,letterSpacing:3,color:"rgba(245,240,235,0.4)",fontWeight:500}}>LUXLOC, 2026</div>
-      </div>
+      </div></Reveal>
     </section>
 
     {/* ════ HOW IT WORKS ════ */}
     <section style={{padding:"clamp(80px,10vw,140px) clamp(20px,5vw,80px)"}}>
-      <div style={{maxWidth:1300,margin:"0 auto"}}>
+      <Reveal><div style={{maxWidth:1300,margin:"0 auto"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1.4fr",gap:60,marginBottom:72,alignItems:"end"}}>
           <div>
             <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:18,fontWeight:600}}>EXPÉRIENCE</div>
@@ -356,12 +435,12 @@ function Landing({setScreen,articles,stats}){
             </div>
           ))}
         </div>
-      </div>
+      </div></Reveal>
     </section>
 
     {/* ════ FEATURED — selection editoriale ════ */}
     {featuredGrid.length>0 && <section style={{padding:"clamp(60px,8vw,120px) clamp(20px,5vw,80px)",background:"#FFFFFF",borderTop:"1px solid rgba(26,22,20,0.06)",borderBottom:"1px solid rgba(26,22,20,0.06)"}}>
-      <div style={{maxWidth:1380,margin:"0 auto"}}>
+      <Reveal><div style={{maxWidth:1380,margin:"0 auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"end",marginBottom:48,flexWrap:"wrap",gap:20}}>
           <div>
             <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:14,fontWeight:600}}>SÉLECTION</div>
@@ -383,29 +462,29 @@ function Landing({setScreen,articles,stats}){
             </div>
           </div>)}
         </div>
-      </div>
+      </div></Reveal>
     </section>}
 
     {/* ════ CATEGORIES ════ */}
     <section style={{padding:"clamp(80px,10vw,140px) clamp(20px,5vw,80px)"}}>
-      <div style={{maxWidth:1300,margin:"0 auto"}}>
+      <Reveal><div style={{maxWidth:1300,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:56}}>
           <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:16,fontWeight:600}}>CATÉGORIES</div>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(32px,4vw,56px)",fontWeight:300,letterSpacing:"-0.02em"}}>Explorez par <span style={{fontStyle:"italic",color:"#C9A84C"}}>univers</span></h2>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:0,border:"1px solid rgba(26,22,20,0.1)"}}>
           {categories.map((cat,i)=>{const count=(articles||[]).filter(a=>a.category===cat.id).length;return <div key={cat.id} onMouseEnter={()=>setHCat(cat.id)} onMouseLeave={()=>setHCat(null)} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{cursor:"pointer",padding:"44px 24px",textAlign:"center",background:hCat===cat.id?"#FAF8F4":"#FFFFFF",borderLeft:i>0?"1px solid rgba(26,22,20,0.08)":"none",transition:"all 0.4s cubic-bezier(0.2,0.8,0.2,1)"}}>
-            <div style={{fontSize:42,marginBottom:18,transform:hCat===cat.id?"scale(1.12)":"scale(1)",transition:"transform 0.4s cubic-bezier(0.2,0.8,0.2,1)"}}>{cat.icon}</div>
+            <div style={{marginBottom:18,color:hCat===cat.id?"#C9A84C":"#1A1614",transform:hCat===cat.id?"scale(1.12)":"scale(1)",transition:"transform 0.4s cubic-bezier(0.2,0.8,0.2,1), color 0.3s"}}><Icon name={cat.icon} size={44} stroke={1.3}/></div>
             <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,marginBottom:8,letterSpacing:"-0.005em"}}>{cat.label}</div>
             <div style={{fontSize:10,letterSpacing:2,color:"rgba(26,22,20,0.4)",fontWeight:600}}>{count} PIÈCE{count!==1?"S":""}</div>
           </div>;})}
         </div>
-      </div>
+      </div></Reveal>
     </section>
 
     {/* ════ CTA FINAL ════ */}
     <section style={{padding:"clamp(80px,10vw,160px) clamp(20px,5vw,80px)",textAlign:"center",background:"linear-gradient(180deg,#FAF8F4 0%,#F0E8D8 100%)"}}>
-      <div style={{maxWidth:820,margin:"0 auto"}}>
+      <Reveal><div style={{maxWidth:820,margin:"0 auto"}}>
         <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:24,fontWeight:600}}>REJOIGNEZ LA MAISON</div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(40px,5.5vw,84px)",fontWeight:300,lineHeight:1.02,marginBottom:36,letterSpacing:"-0.025em"}}>
           Prêt à <span style={{fontStyle:"italic",color:"#C9A84C"}}>commencer</span> ?
@@ -414,7 +493,7 @@ function Landing({setScreen,articles,stats}){
           Accédez gratuitement aux pièces de la collection découverte. La première location est offerte aux premiers utilisateurs.
         </p>
         <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{fontSize:12,letterSpacing:2,padding:"22px 56px",border:"none",background:"#1A1614",color:"#FAF8F4",cursor:"pointer",fontWeight:600}}>COMMENCER L'EXPÉRIENCE →</button>
-      </div>
+      </div></Reveal>
     </section>
 
   </div>;
@@ -522,7 +601,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
       {step===0&&<div style={{display:"grid",gap:20}}>
         <div><label style={{fontSize:12,color:"rgba(26,22,20,0.5)",display:"block",marginBottom:8}}>Catégorie</label>
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-          {categories.map(c=><div key={c.id} onClick={()=>setCat(c.id)} style={{cursor:"pointer",padding:"16px 8px",textAlign:"center",border:`1px solid ${cat===c.id?"#C9A84C":"rgba(26,22,20,0.08)"}`,background:cat===c.id?"rgba(201,168,76,0.06)":"transparent",transition:"all 0.2s"}}><div style={{fontSize:20,marginBottom:6}}>{c.icon}</div><div style={{fontSize:11,color:cat===c.id?"#C9A84C":"rgba(26,22,20,0.5)"}}>{c.label}</div></div>)}
+          {categories.map(c=><div key={c.id} onClick={()=>setCat(c.id)} style={{cursor:"pointer",padding:"16px 8px",textAlign:"center",border:`1px solid ${cat===c.id?"#C9A84C":"rgba(26,22,20,0.08)"}`,background:cat===c.id?"rgba(201,168,76,0.06)":"transparent",transition:"all 0.2s"}}><div style={{marginBottom:6,color:cat===c.id?"#C9A84C":"#1A1614"}}><Icon name={c.icon} size={22} stroke={1.3}/></div><div style={{fontSize:11,color:cat===c.id?"#C9A84C":"rgba(26,22,20,0.5)"}}>{c.label}</div></div>)}
         </div></div>
         <div><label style={{fontSize:12,color:"rgba(26,22,20,0.5)",display:"block",marginBottom:8}}>Marque</label>
         <select value={brand} onChange={e=>setBrand(e.target.value)} style={{width:"100%",padding:"14px 16px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14}}><option value="">Sélectionner</option>{["Louis Vuitton","Gucci","Hermès","Chanel","Prada","Dior","Rolex","Cartier","Burberry"].map(b=><option key={b}>{b}</option>)}</select></div>
@@ -667,20 +746,20 @@ function OwnerResult({setScreen,verifResult,showToast}){
 // ═══ RENTER BROWSE ═══
 // Brand visual configs for catalogue
 const BRAND_VISUALS = {
-  "Louis Vuitton": {bg:"linear-gradient(145deg,#3D2B1F 0%,#6B4226 50%,#8B6914 100%)",pattern:"LV",emoji:"👜"},
-  "Gucci": {bg:"linear-gradient(145deg,#1A3C34 0%,#2D6B4F 50%,#C9A84C 100%)",pattern:"GG",emoji:"👜"},
-  "Hermès": {bg:"linear-gradient(145deg,#C76B2A 0%,#E8A04C 50%,#F5D5A0 100%)",pattern:"H",emoji:"👜"},
-  "Rolex": {bg:"linear-gradient(145deg,#0A3D2A 0%,#1B5E3B 50%,#C9A84C 100%)",pattern:"⌚",emoji:"⌚"},
-  "Van Cleef & Arpels": {bg:"linear-gradient(145deg,#2C1654 0%,#6B3FA0 50%,#C9A84C 100%)",pattern:"VCA",emoji:"💎"},
-  "Burberry": {bg:"linear-gradient(145deg,#8B6914 0%,#C4A35A 50%,#E8D5A0 100%)",pattern:"BB",emoji:"🧥"},
-  "Cartier": {bg:"linear-gradient(145deg,#5A0A0A 0%,#8B1A1A 50%,#C9A84C 100%)",pattern:"C",emoji:"⌚"},
-  "Ray-Ban": {bg:"linear-gradient(145deg,#1A1A2E 0%,#16213E 50%,#0F3460 100%)",pattern:"RB",emoji:"🕶"},
-  "Chanel": {bg:"linear-gradient(145deg,#1A1A1A 0%,#333333 50%,#C9A84C 100%)",pattern:"CC",emoji:"👜"},
-  "Prada": {bg:"linear-gradient(145deg,#1A1A1A 0%,#2D2D2D 50%,#4A4A4A 100%)",pattern:"P",emoji:"👜"},
-  "Dior": {bg:"linear-gradient(145deg,#E8E0D0 0%,#C4B89C 50%,#8B7D5E 100%)",pattern:"CD",emoji:"👜"},
-  "Tommy Hilfiger": {bg:"linear-gradient(145deg,#001F5C 0%,#FFFFFF 50%,#C8102E 100%)",pattern:"TH",emoji:"👜"},
+  "Louis Vuitton": {bg:"linear-gradient(145deg,#3D2B1F 0%,#6B4226 50%,#8B6914 100%)",pattern:"LV",emoji:""},
+  "Gucci": {bg:"linear-gradient(145deg,#1A3C34 0%,#2D6B4F 50%,#C9A84C 100%)",pattern:"GG",emoji:""},
+  "Hermès": {bg:"linear-gradient(145deg,#C76B2A 0%,#E8A04C 50%,#F5D5A0 100%)",pattern:"H",emoji:""},
+  "Rolex": {bg:"linear-gradient(145deg,#0A3D2A 0%,#1B5E3B 50%,#C9A84C 100%)",pattern:"R",emoji:""},
+  "Van Cleef & Arpels": {bg:"linear-gradient(145deg,#2C1654 0%,#6B3FA0 50%,#C9A84C 100%)",pattern:"VCA",emoji:""},
+  "Burberry": {bg:"linear-gradient(145deg,#8B6914 0%,#C4A35A 50%,#E8D5A0 100%)",pattern:"BB",emoji:""},
+  "Cartier": {bg:"linear-gradient(145deg,#5A0A0A 0%,#8B1A1A 50%,#C9A84C 100%)",pattern:"C",emoji:""},
+  "Ray-Ban": {bg:"linear-gradient(145deg,#1A1A2E 0%,#16213E 50%,#0F3460 100%)",pattern:"RB",emoji:""},
+  "Chanel": {bg:"linear-gradient(145deg,#1A1A1A 0%,#333333 50%,#C9A84C 100%)",pattern:"CC",emoji:""},
+  "Prada": {bg:"linear-gradient(145deg,#1A1A1A 0%,#2D2D2D 50%,#4A4A4A 100%)",pattern:"P",emoji:""},
+  "Dior": {bg:"linear-gradient(145deg,#E8E0D0 0%,#C4B89C 50%,#8B7D5E 100%)",pattern:"CD",emoji:""},
+  "Tommy Hilfiger": {bg:"linear-gradient(145deg,#001F5C 0%,#FFFFFF 50%,#C8102E 100%)",pattern:"TH",emoji:""},
 };
-function getBrandVisual(brand) { return BRAND_VISUALS[brand] || {bg:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",pattern:brand?brand.substring(0,2):"?",emoji:"✦"}; }
+function getBrandVisual(brand) { return BRAND_VISUALS[brand] || {bg:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",pattern:brand?brand.substring(0,2):"?",emoji:""}; }
 
 // Badge de vérification — reflète le vrai statut renvoyé par l'API
 function verifBadge(status, score) {
@@ -699,8 +778,8 @@ function ProductImage({brand,articleId,photo,hovered,style}) {
     : <>
       <div style={{position:"absolute",inset:0,opacity:0.08,background:"repeating-linear-gradient(45deg,transparent,transparent 35px,rgba(255,255,255,0.05) 35px,rgba(255,255,255,0.05) 70px)"}}/>
       <div style={{textAlign:"center",zIndex:1}}>
-        <div style={{fontSize:40,marginBottom:4,filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.3))"}}>{v.emoji}</div>
-        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,color:"rgba(255,255,255,0.25)",letterSpacing:4}}>{v.pattern}</div>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(48px,8vw,82px)",fontWeight:200,color:"rgba(255,255,255,0.55)",letterSpacing:"-0.03em",textShadow:"0 2px 12px rgba(26,22,20,0.25)",lineHeight:1}}>{v.pattern}</div>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:10,color:"rgba(255,255,255,0.35)",letterSpacing:5,marginTop:14,fontWeight:600}}>{brand?.toUpperCase()}</div>
       </div>
     </>}
   </div>
@@ -1016,7 +1095,7 @@ function RenterPayment({setScreen,article,txData,showToast}){
       </div>
 
       <button onClick={processPayment} disabled={paying||cardNum.length<19} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:cardNum.length>=19?"#C9A84C":"rgba(26,22,20,0.08)",color:cardNum.length>=19?"#1A1614":"rgba(26,22,20,0.25)",cursor:cardNum.length>=19?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours...":"PAYER "+txData.summary?.total+"€ — STRIPE SÉCURISÉ"}</button>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12}}><span style={{fontSize:12}}>🔒</span><span style={{fontSize:11,color:"rgba(26,22,20,0.25)"}}>Paiement sécurisé par Stripe — Chiffrement SSL 256 bits</span></div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12,color:"rgba(26,22,20,0.35)"}}><Icon name="shield" size={14} stroke={1.4}/><span style={{fontSize:11,color:"rgba(26,22,20,0.45)"}}>Paiement sécurisé par Stripe — Chiffrement SSL 256 bits</span></div>
       </>
       :<div style={{textAlign:"center",padding:40}}>
         <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 20px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:32,color:"#5DCAA5"}}>✓</span></div>
