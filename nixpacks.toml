@@ -1,0 +1,5 @@
+# Configuration Nixpacks pour Railway
+# Installe le binaire Tesseract OCR (français + anglais) requis par pytesseract.
+
+[phases.setup]
+aptPkgs = ["tesseract-ocr", "tesseract-ocr-fra", "tesseract-ocr-eng"]

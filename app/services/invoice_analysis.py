@@ -280,11 +280,12 @@ def article_consistency(article, ocr_text):
         detail["modele_present"] = False
         score -= 0.30
 
-    # 2. Cohérence du prix : on cherche les montants en euros bien formés
-    #    (groupes de milliers séparés par espace/point, décimale optionnelle).
-    #    Ex. capturés : "1 250", "1 250,00", "6 900,00", "1250.00"
+    # 2. Cohérence du prix : on extrait tous les montants en euros, même
+    #    quand l'OCR rate une lettre du suffixe (ex. "EU!" au lieu de "EUR").
+    #    Un retouchage de prix laisse souvent le total original visible en
+    #    plus du faux total, ce qui crée plusieurs montants incohérents.
     montants = re.findall(
-        r"(\d{1,3}(?:[ .]\d{3})*(?:,\d{2})?)\s*(?:€|eur|euros)",
+        r"(\d{1,3}(?:[ .]\d{3})*(?:,\d{2})?)\s*(?:€|eur?o?s?|eu[r]?[!\.,])",
         text_low,
     )
     prix_factures = []
@@ -298,9 +299,13 @@ def article_consistency(article, ocr_text):
             pass
 
     if prix_factures and article.retail_price:
-        plus_proche = min(prix_factures, key=lambda p: abs(p - article.retail_price))
-        ecart = abs(plus_proche - article.retail_price) / article.retail_price
-        detail["prix_facture_detecte"] = plus_proche
+        # On retient le PLUS GROS montant — typiquement le total TTC.
+        # Si la facture a été retouchée à la hausse (cas le plus fréquent),
+        # le montant gonflé domine et trahit la falsification.
+        montant_total = max(prix_factures)
+        ecart = abs(montant_total - article.retail_price) / article.retail_price
+        detail["prix_facture_detecte"] = montant_total
+        detail["tous_montants"] = sorted(set(prix_factures))
         detail["ecart_prix"] = round(ecart, 3)
         if ecart <= 0.20:
             detail["coherence_prix"] = "Cohérent"
@@ -329,12 +334,31 @@ def article_consistency(article, ocr_text):
 INVOICE_WEIGHTS = {"quality": 0.15, "ela": 0.40, "format": 0.25, "consistency": 0.20}
 
 
+def extract_ocr_text(img):
+    """
+    Extrait le texte de l'image de facture via Tesseract OCR.
+
+    Tesseract reconnaît numéros, dates, montants, désignations. Si le binaire
+    n'est pas disponible (ex. environnement local sans tesseract installé),
+    on renvoie None proprement et le pipeline continue sans OCR.
+    """
+    try:
+        import pytesseract
+        # On essaye le français + anglais (les factures de luxe panachent souvent)
+        text = pytesseract.image_to_string(img, lang="fra+eng")
+        return text.strip() if text else None
+    except (ImportError, Exception) as e:
+        # pytesseract absent, binaire tesseract introuvable, ou langue indispo
+        return None
+
+
 def verify_invoice(invoice_b64, article, ocr_text=None):
     """
     Exécute le pipeline complet de vérification de facture et renvoie
     un score global 0-1 + le détail de chaque contrôle.
 
-    `ocr_text` est optionnel : fourni par Google Vision API en production.
+    `ocr_text` est optionnel. S'il n'est pas fourni, on tente une extraction
+    automatique via Tesseract OCR.
     """
     img = decode_image(invoice_b64)
     if img is None:
@@ -343,6 +367,14 @@ def verify_invoice(invoice_b64, article, ocr_text=None):
             "verdict": "Facture illisible ou absente",
             "controles": {},
         }
+
+    # Si aucun texte OCR n'a été fourni par l'amont, on lance Tesseract ici
+    ocr_auto = False
+    if not ocr_text or not ocr_text.strip():
+        extracted = extract_ocr_text(img)
+        if extracted:
+            ocr_text = extracted
+            ocr_auto = True
 
     quality = quality_check(img)
     ela = error_level_analysis(img)
@@ -374,6 +406,7 @@ def verify_invoice(invoice_b64, article, ocr_text=None):
     return {
         "score": score,
         "verdict": verdict,
+        "ocr_extrait": ocr_auto,
         "poids": INVOICE_WEIGHTS,
         "controles": {
             "qualite": quality,
