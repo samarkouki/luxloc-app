@@ -366,7 +366,7 @@ function Nav({screen,setScreen,user,onLogout}){
     <div style={{display:"flex",alignItems:"center",gap:28}}>
       <LuxlocLogo size={34} wordmarkSize={17} onClick={()=>setScreen(SCREENS.LANDING)}/>
       <div style={{display:"flex",gap:24,marginLeft:32}}>
-        {[{l:"Accueil",s:SCREENS.LANDING},{l:"Louer",s:SCREENS.RENTER_BROWSE},{l:"Mettre en location",s:SCREENS.OWNER_VERIFY,hideForRenter:true},{l:"Mon espace",s:SCREENS.OWNER_DASHBOARD},{l:"Statistiques",s:SCREENS.STATS,adminOnly:true}].filter(n=>{ if(n.adminOnly) return user&&user.role==="admin"; if(n.hideForRenter) return !(user&&user.role==="renter"); return true; }).map(n=>
+        {[{l:"Accueil",s:SCREENS.LANDING},{l:"Louer",s:SCREENS.RENTER_BROWSE},{l:"Mettre en location",s:SCREENS.OWNER_VERIFY,hideForRenter:true},{l:"Mon espace",s:(user&&user.role==="renter")?SCREENS.RENTER_PROFILE:SCREENS.OWNER_DASHBOARD},{l:"Statistiques",s:SCREENS.STATS,adminOnly:true}].filter(n=>{ if(n.adminOnly) return user&&user.role==="admin"; if(n.hideForRenter) return !(user&&user.role==="renter"); return true; }).map(n=>
           <button key={n.s} onClick={()=>setScreen(n.s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:.5,color:screen===n.s?"#C9A84C":"rgba(26,22,20,0.55)",borderBottom:screen===n.s?"1px solid #C9A84C":"1px solid transparent",padding:"4px 0"}}>{n.l}</button>
         )}
       </div>
@@ -1269,12 +1269,16 @@ function RenterProfile({setScreen,user,showToast}){
       <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22,marginBottom:20}}>Mes locations</h2>
       {transactions.length===0?<div style={{padding:40,border:"1px dashed rgba(26,22,20,0.1)",textAlign:"center",color:"rgba(26,22,20,0.3)"}}>Aucune location pour le moment. <span style={{color:"#C9A84C",cursor:"pointer"}} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)}>Explorer le catalogue →</span></div>
       :transactions.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:16,padding:16,border:"1px solid rgba(26,22,20,0.06)",marginBottom:8}}>
-        <div style={{width:50,height:50,background:"linear-gradient(135deg,rgba(109,46,70,0.2),rgba(201,168,76,0.1))",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,color:"rgba(201,168,76,0.3)"}}>#{t.id}</span>
+        <div style={{width:56,height:56,flexShrink:0,overflow:"hidden",background:"linear-gradient(135deg,rgba(109,46,70,0.15),rgba(201,168,76,0.1))",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {t.article_photo?<img src={t.article_photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+          :<span style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,color:"rgba(201,168,76,0.4)"}}>{t.article_brand?.[0]||"#"}</span>}
         </div>
         <div style={{flex:1}}>
-          <div style={{fontSize:14,fontWeight:500}}>Location #{t.id}</div>
-          <div style={{fontSize:12,color:"rgba(26,22,20,0.4)"}}>{t.created_at?new Date(t.created_at).toLocaleDateString("fr-FR"):""}</div>
+          <div style={{fontSize:11,color:"#C9A84C",letterSpacing:1}}>{t.article_brand}</div>
+          <div style={{fontSize:14,fontWeight:500}}>{t.article_title}</div>
+          <div style={{fontSize:12,color:"rgba(26,22,20,0.4)"}}>
+            {t.jours_restants!==null&&(t.status==="active"||t.status==="confirmed")?`${t.jours_restants} jour${t.jours_restants>1?"s":""} restant${t.jours_restants>1?"s":""}`:t.created_at?new Date(t.created_at).toLocaleDateString("fr-FR"):""}
+          </div>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:16,fontWeight:600,color:"#C9A84C"}}>{t.total}€</div>
@@ -1691,7 +1695,31 @@ function StatsScreen({showToast}){
 
 // ═══ APP ═══
 function App(){
-  const [screen,setScreen]=useState(SCREENS.AUTH);
+  const [screen,_setScreen]=useState(SCREENS.AUTH);
+
+  // Navigation historisée : chaque écran est empilé dans l'historique du
+  // navigateur, pour que le bouton "précédent" revienne à l'écran d'avant
+  // au lieu de sortir de l'application.
+  const setScreen=useCallback((next)=>{
+    _setScreen(prev=>{
+      if(next!==prev){
+        window.history.pushState({screen:next},"","");
+      }
+      return next;
+    });
+  },[]);
+
+  // Réagit au bouton précédent/suivant du navigateur
+  useEffect(()=>{
+    const onPop=(e)=>{
+      const s=(e.state&&e.state.screen)||SCREENS.AUTH;
+      _setScreen(s);
+    };
+    window.addEventListener("popstate",onPop);
+    // Écran initial dans l'historique
+    window.history.replaceState({screen:SCREENS.AUTH},"","");
+    return ()=>window.removeEventListener("popstate",onPop);
+  },[]);
   const [articles,setArticles]=useState([]);
   const [user,setUser]=useState(null);
   const [verifResult,setVerifResult]=useState(null);

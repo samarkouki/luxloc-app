@@ -21,7 +21,10 @@ from PIL import Image, ImageDraw, ImageFont
 from app.seed_dashboard import seed_dashboard_data
 from app.database import engine
 from app.admin import setup_admin
-
+try:
+    import pillow_avif
+except ImportError:
+    pass
 
 Base.metadata.create_all(bind=engine)
 
@@ -201,21 +204,29 @@ def resolve_photo_path(filename):
 
 def load_product_photo_b64(filename, brand, model):
     """
-    Charge une vraie photo produit depuis static/products/. Si le fichier
-    est absent ou illisible, on retombe sur le placeholder procédural pour
-    que le seed n'échoue jamais.
+    Charge une vraie photo produit depuis static/products/. Force un
+    décodage et une reconversion complète en JPEG, quel que soit le format
+    réel du fichier (webp/png/avif renommés en .jpg, profils couleur
+    exotiques...). Si le fichier est absent ou vraiment illisible, on
+    retombe sur le placeholder procédural.
     """
     path = resolve_photo_path(filename)
     if not path:
         return generate_product_photo_b64(brand, model)
     try:
-        img = Image.open(path).convert("RGB")
+        with Image.open(path) as im:
+            im.load()                     # force le décodage complet ici
+            img = im.convert("RGB")       # normalise en RGB (gère RGBA, P, CMYK...)
         if max(img.size) > 800:
             img.thumbnail((800, 800), Image.LANCZOS)
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=85)
-        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
-    except Exception:
+        data = buf.getvalue()
+        if len(data) < 1000:              # image suspecte (quasi vide)
+            return generate_product_photo_b64(brand, model)
+        return "data:image/jpeg;base64," + base64.b64encode(data).decode()
+    except Exception as e:
+        print(f"[photo] échec {filename}: {e}")   # visible dans les logs
         return generate_product_photo_b64(brand, model)
 
 
