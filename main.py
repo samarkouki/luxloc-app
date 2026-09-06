@@ -23,6 +23,19 @@ Base.metadata.create_all(bind=engine)
 
 
 # ════════════════════════════════════════════════════════════════════
+# CHEMINS ABSOLUS — indépendants du répertoire courant du process
+# ════════════════════════════════════════════════════════════════════
+# Railway ne garantit pas que uvicorn soit lancé depuis la racine du
+# projet. Un chemin relatif ("static/products") échouerait alors en
+# silence et on retomberait sur les placeholders sans aucun message.
+# On ancre donc tous les chemins sur l'emplacement de ce fichier.
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+PRODUCT_PHOTOS_DIR = os.path.join(STATIC_DIR, "products")
+
+
+# ════════════════════════════════════════════════════════════════════
 # GÉNÉRATEURS DE DONNÉES DE DÉMO — factures et photos d'articles
 # ════════════════════════════════════════════════════════════════════
 
@@ -150,7 +163,6 @@ def generate_product_photo_b64(brand, model):
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-PRODUCT_PHOTOS_DIR = "static/products"
 PHOTO_FILES = [
     "01_lv_speedy.jpg", "02_gucci_marmont.jpg", "03_rolex_submariner.jpg",
     "04_hermes_kelly.jpg", "05_vca_alhambra.jpg", "06_burberry_trench.jpg",
@@ -161,11 +173,36 @@ PHOTO_FILES = [
 ]
 
 
-def load_product_photo_b64(filename, brand, model):
+def resolve_photo_path(filename):
+    """
+    Retrouve le fichier photo sur le disque. On tente d'abord le nom exact,
+    puis on tolère une extension différente (.jpeg, .png, .webp) ou une
+    variation de casse — le renommage automatique au téléchargement est la
+    cause d'échec la plus fréquente.
+    Retourne le chemin absolu, ou None si rien ne correspond.
+    """
     if not filename:
-        return generate_product_photo_b64(brand, model)
-    path = os.path.join(PRODUCT_PHOTOS_DIR, filename)
-    if not os.path.exists(path):
+        return None
+    exact = os.path.join(PRODUCT_PHOTOS_DIR, filename)
+    if os.path.exists(exact):
+        return exact
+    if not os.path.isdir(PRODUCT_PHOTOS_DIR):
+        return None
+    prefix = filename.split("_")[0] + "_"      # "01_", "02_", ...
+    for f in sorted(os.listdir(PRODUCT_PHOTOS_DIR)):
+        if f.lower().startswith(prefix.lower()):
+            return os.path.join(PRODUCT_PHOTOS_DIR, f)
+    return None
+
+
+def load_product_photo_b64(filename, brand, model):
+    """
+    Charge une vraie photo produit depuis static/products/. Si le fichier
+    est absent ou illisible, on retombe sur le placeholder procédural pour
+    que le seed n'échoue jamais.
+    """
+    path = resolve_photo_path(filename)
+    if not path:
         return generate_product_photo_b64(brand, model)
     try:
         img = Image.open(path).convert("RGB")
@@ -192,17 +229,38 @@ app.include_router(verification.router, prefix="/api/v1/verification", tags=["V�
 app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
 app.include_router(returns.router, prefix="/api/v1/returns", tags=["Retours"])
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 @app.get("/", include_in_schema=False)
 def serve_frontend():
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
 @app.get("/health", tags=["Root"])
 def health():
     return {"status": "healthy"}
+
+
+@app.get("/api/v1/debug/photos", tags=["Root"])
+def debug_photos():
+    """
+    Diagnostic : indique ce que le serveur voit réellement dans
+    static/products/. À appeler après chaque déploiement, AVANT de rejouer
+    le seed. Si "trouvees" vaut 18, les photos sont bien en place.
+    """
+    presents, manquantes = [], []
+    for f in PHOTO_FILES:
+        (presents if resolve_photo_path(f) else manquantes).append(f)
+    return {
+        "dossier": PRODUCT_PHOTOS_DIR,
+        "dossier_existe": os.path.isdir(PRODUCT_PHOTOS_DIR),
+        "fichiers_sur_disque": sorted(os.listdir(PRODUCT_PHOTOS_DIR))
+        if os.path.isdir(PRODUCT_PHOTOS_DIR) else [],
+        "trouvees": len(presents),
+        "attendues": len(PHOTO_FILES),
+        "manquantes": manquantes,
+    }
 
 
 @app.post("/api/v1/seed", tags=["Root"])
@@ -218,6 +276,8 @@ def seed_demo_data():
                 "message": "Donnees de demo deja presentes",
                 "users": db.query(User).count(),
                 "articles": db.query(Article).count(),
+                "note": "Le seed est idempotent : il ne met PAS a jour les photos. "
+                        "Pour recharger les photos, utilisez POST /api/v1/reset-and-seed?confirm=yes",
                 "login_demo": {"email": "sophie@luxloc.fr", "password": "demo123"},
             }
 
@@ -269,9 +329,14 @@ def seed_demo_data():
         db.add_all(articles_objects)
         db.flush()
 
+        # Photos d'articles — vraie photo depuis static/products/ si elle
+        # existe, sinon placeholder procédural.
+        photos_reelles = 0
         photo_types = ["overview", "logo", "label", "stitching"]
         for i, art in enumerate(articles_objects):
             photo_file = PHOTO_FILES[i] if i < len(PHOTO_FILES) else None
+            if resolve_photo_path(photo_file):
+                photos_reelles += 1
             overview_b64 = load_product_photo_b64(photo_file, art.brand, art.model)
             for pt in photo_types:
                 db.add(ArticlePhoto(
@@ -317,6 +382,8 @@ def seed_demo_data():
             "users": 3,
             "articles": len(articles_objects),
             "factures_generees": len(articles_objects),
+            "photos_reelles": photos_reelles,
+            "photos_placeholder": len(articles_objects) - photos_reelles,
             "login_demo": {"email": "sophie@luxloc.fr", "password": "demo123"},
         }
     finally:
