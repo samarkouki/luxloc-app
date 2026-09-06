@@ -290,7 +290,10 @@ def seed_demo_data():
         lucas = User(email="lucas@luxloc.fr", hashed_password=hash_pw("demo123"),
                      first_name="Lucas", last_name="Bernard", role=UserRole.BOTH,
                      is_verified=True, trust_score=0.95)
-        db.add_all([sophie, emma, lucas])
+        admin = User(email="admin@luxloc.fr", hashed_password=hash_pw("admin123"),
+                     first_name="Admin", last_name="LUXLOC", role=UserRole.ADMIN,
+                     is_verified=True, trust_score=1.0)
+        db.add_all([sophie, emma, lucas, admin])
         db.flush()
 
         S, L = sophie.id, lucas.id

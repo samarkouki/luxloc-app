@@ -1,0 +1,22 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Base de données locale
+*.db
+luxloc.db
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+
+# VS Code
+.vscode/
+
+# Photos produits (optionnel, si trop lourdes)
+# static/products/

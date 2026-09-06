@@ -11,6 +11,7 @@ class UserRole(str, enum.Enum):
     OWNER = "owner"
     RENTER = "renter"
     BOTH = "both"
+    ADMIN = "admin"
 
 
 class ArticleCategory(str, enum.Enum):

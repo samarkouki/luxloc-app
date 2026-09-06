@@ -104,6 +104,7 @@ function AuthScreen({onLogin, showToast}) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [role, setRole] = useState("renter");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -122,7 +123,7 @@ function AuthScreen({onLogin, showToast}) {
   const handleRegister = async () => {
     setLoading(true);
     try {
-      const res = await api("/users/register", {method:"POST", body:{email, password, first_name:firstName, last_name:lastName, phone, role:"both"}});
+      const res = await api("/users/register", {method:"POST", body:{email, password, first_name:firstName, last_name:lastName, phone, role}});
       showToast("✓ Compte créé ! Bienvenue " + res.first_name);
       onLogin(res);
     } catch(e) {
@@ -165,6 +166,19 @@ function AuthScreen({onLogin, showToast}) {
       {/* Form */}
       <div style={{display:"grid",gap:16}}>
         {mode==="register"&&<>
+          <div>
+            <label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:8}}>Je souhaite avant tout</label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div onClick={()=>setRole("renter")} style={{cursor:"pointer",padding:"14px 12px",textAlign:"center",border:`1px solid ${role==="renter"?"#C9A84C":"rgba(26,22,20,0.1)"}`,background:role==="renter"?"rgba(201,168,76,0.06)":"transparent",transition:"all 0.2s"}}>
+                <div style={{fontSize:13,fontWeight:600,color:role==="renter"?"#C9A84C":"rgba(26,22,20,0.6)"}}>Louer</div>
+                <div style={{fontSize:10,color:"rgba(26,22,20,0.35)",marginTop:2}}>Accéder aux pièces</div>
+              </div>
+              <div onClick={()=>setRole("owner")} style={{cursor:"pointer",padding:"14px 12px",textAlign:"center",border:`1px solid ${role==="owner"?"#C9A84C":"rgba(26,22,20,0.1)"}`,background:role==="owner"?"rgba(201,168,76,0.06)":"transparent",transition:"all 0.2s"}}>
+                <div style={{fontSize:13,fontWeight:600,color:role==="owner"?"#C9A84C":"rgba(26,22,20,0.6)"}}>Mettre en location</div>
+                <div style={{fontSize:10,color:"rgba(26,22,20,0.35)",marginTop:2}}>Proposer mes pièces</div>
+              </div>
+            </div>
+          </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Prénom</label><input value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="Sophie" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
             <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Nom</label><input value={lastName} onChange={e=>setLastName(e.target.value)} placeholder="Martin" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
@@ -387,7 +401,7 @@ function Nav({screen,setScreen,user,onLogout}){
     <div style={{display:"flex",alignItems:"center",gap:28}}>
       <LuxlocLogo size={34} wordmarkSize={17} onClick={()=>setScreen(SCREENS.LANDING)}/>
       <div style={{display:"flex",gap:24,marginLeft:32}}>
-        {[{l:"Accueil",s:SCREENS.LANDING},{l:"Louer",s:SCREENS.RENTER_BROWSE},{l:"Mettre en location",s:SCREENS.OWNER_VERIFY},{l:"Mon espace",s:SCREENS.OWNER_DASHBOARD},{l:"Statistiques",s:SCREENS.STATS}].map(n=>
+        {[{l:"Accueil",s:SCREENS.LANDING},{l:"Louer",s:SCREENS.RENTER_BROWSE},{l:"Mettre en location",s:SCREENS.OWNER_VERIFY,hideForRenter:true},{l:"Mon espace",s:SCREENS.OWNER_DASHBOARD},{l:"Statistiques",s:SCREENS.STATS,adminOnly:true}].filter(n=>{ if(n.adminOnly) return user&&user.role==="admin"; if(n.hideForRenter) return !(user&&user.role==="renter"); return true; }).map(n=>
           <button key={n.s} onClick={()=>setScreen(n.s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:.5,color:screen===n.s?"#C9A84C":"rgba(26,22,20,0.55)",borderBottom:screen===n.s?"1px solid #C9A84C":"1px solid transparent",padding:"4px 0"}}>{n.l}</button>
         )}
       </div>
@@ -1597,7 +1611,7 @@ function App(){
     {screen===SCREENS.RENTER_PAYMENT&&<RenterPayment setScreen={setScreen} article={selectedArticle} txData={txData} showToast={showToast}/>}
     {screen===SCREENS.RENTER_PROFILE&&<RenterProfile setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_RETURN&&<RenterReturn setScreen={setScreen} showToast={showToast}/>}
-    {screen===SCREENS.STATS&&<StatsScreen/>}
+    {screen===SCREENS.STATS&&(user&&user.role==="admin"?<StatsScreen/>:<div style={{minHeight:"calc(100vh - 64px)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(26,22,20,0.4)",fontSize:14}}>Accès réservé aux administrateurs.</div>)}
     {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
   </div>
 }
