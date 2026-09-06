@@ -18,6 +18,10 @@ import io
 import random
 from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont
+from app.seed_dashboard import seed_dashboard_data
+from app.database import engine
+from app.admin import setup_admin
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -222,7 +226,7 @@ app = FastAPI(
 )
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
+setup_admin(app, engine)
 app.include_router(users.router, prefix="/api/v1/users", tags=["Utilisateurs"])
 app.include_router(articles.router, prefix="/api/v1/articles", tags=["Articles"])
 app.include_router(verification.router, prefix="/api/v1/verification", tags=["Vérification IA"])
@@ -416,3 +420,8 @@ def reset_and_seed(confirm: str = ""):
         "lignes_supprimees": deleted,
         "seed": seed_result,
     }
+
+
+@app.post("/api/v1/seed-dashboard", tags=["Root"])
+def seed_dashboard(months_back: int = 12, n_extra_users: int = 24, n_transactions: int = 220):
+    return seed_dashboard_data(months_back, n_extra_users, n_transactions)

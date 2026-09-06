@@ -184,6 +184,15 @@ class ReturnRecord(Base):
     notes = Column(Text)
     guarantee_released = Column(Boolean, default=False)
     guarantee_deducted = Column(Float, default=0.0)
+
+    # État de l'article avant/après la location — pour tracer la dégradation
+    condition_at_rental = Column(String)   # État constaté au départ en location
+    condition_at_return = Column(String)   # État constaté au retour
+
+    # Ponctualité : date de retour effective vs date de retour prévue (Transaction.date_end)
+    actual_return_date = Column(DateTime)
+    returned_on_time = Column(Boolean)     # actual_return_date <= transaction.date_end
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     transaction = relationship("Transaction", back_populates="return_record")

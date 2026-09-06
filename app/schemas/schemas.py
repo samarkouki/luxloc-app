@@ -172,6 +172,10 @@ class ReturnResponse(BaseModel):
     condition: str
     guarantee_released: bool
     guarantee_deducted: float
+    condition_at_rental: Optional[str] = None
+    condition_at_return: Optional[str] = None
+    actual_return_date: Optional[datetime] = None
+    returned_on_time: Optional[bool] = None
     created_at: datetime
 
     class Config:

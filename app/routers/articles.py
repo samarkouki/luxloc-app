@@ -263,3 +263,22 @@ def _enrich_article(article: Article, db: Session) -> dict:
         "photo": overview.image_data if overview else None,
         "created_at": article.created_at,
     }
+@router.get("/platform/stats/monthly")
+def platform_stats_monthly(months_back: int = 12, db: Session = Depends(get_db)):
+    """Revenus de commission par mois, pour le graphique du dashboard."""
+    from datetime import datetime, timedelta
+    from app.models.models import Transaction, TransactionStatus
+
+    since = datetime.utcnow() - timedelta(days=months_back * 30)
+    txs = (db.query(Transaction.date_start, Transaction.commission, Transaction.status)
+           .filter(Transaction.date_start >= since).all())
+
+    monthly = {}
+    for date_start, commission, status in txs:
+        if status == TransactionStatus.CANCELLED:
+            continue
+        key = date_start.strftime("%Y-%m")
+        monthly[key] = monthly.get(key, 0) + (commission or 0)
+
+    labels = sorted(monthly.keys())
+    return {"labels": labels, "values": [round(monthly[m], 2) for m in labels]}
