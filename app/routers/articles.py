@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from app.database import get_db
 from app.schemas.schemas import ArticleCreate, ArticleResponse, CategoryEnum
-from app.models.models import Article, ArticlePhoto, Verification
+from app.models.models import Article, ArticlePhoto, Verification, VerificationStatus
 
 router = APIRouter()
 
@@ -169,6 +169,72 @@ def price_estimate(article_id: int, nb_days: int = Query(ge=1), db: Session = De
         "total": total,
         "commission": round(commission, 2),
         "owner_receives": round(total - commission, 2),
+    }
+
+@router.get("/platform/stats")
+def platform_stats(db: Session = Depends(get_db)):
+    """
+    Statistiques globales de la plateforme LUXLOC.
+    Alimente la section Stats de l'app et, à terme, le dashboard BI externe.
+    """
+    from sqlalchemy import func
+    from app.models.models import Transaction, User
+
+    total_articles = db.query(Article).count()
+    total_users = db.query(User).count()
+    total_transactions = db.query(Transaction).count()
+
+    # Répartition par statut de vérification
+    verified = db.query(Verification).filter(
+        Verification.status == VerificationStatus.VERIFIED).count()
+    review = db.query(Verification).filter(
+        Verification.status == VerificationStatus.REVIEW).count()
+    rejected = db.query(Verification).filter(
+        Verification.status == VerificationStatus.REJECTED).count()
+
+    # Taux de vérification automatique
+    total_verifs = verified + review + rejected
+    taux_auto = round(verified / total_verifs * 100, 1) if total_verifs else 0
+
+    # Score IA moyen (sur les vérifications existantes)
+    avg_score = db.query(func.avg(Verification.score_global)).scalar()
+    avg_score = round(avg_score, 3) if avg_score else 0
+
+    # Répartition par catégorie
+    cat_rows = db.query(
+        Article.category, func.count(Article.id)
+    ).group_by(Article.category).all()
+    par_categorie = {
+        (c.value if hasattr(c, "value") else c): n for c, n in cat_rows
+    }
+
+    # Répartition par marque (top marques)
+    brand_rows = db.query(
+        Article.brand, func.count(Article.id)
+    ).group_by(Article.brand).order_by(func.count(Article.id).desc()).all()
+    par_marque = {b: n for b, n in brand_rows}
+
+    # Valeur totale du catalogue (somme des prix retail)
+    valeur_catalogue = db.query(func.sum(Article.retail_price)).scalar() or 0
+
+    # Revenus de commission (20% du total des transactions)
+    revenus_commission = db.query(func.sum(Transaction.commission)).scalar() or 0
+
+    return {
+        "total_articles": total_articles,
+        "total_utilisateurs": total_users,
+        "total_locations": total_transactions,
+        "verification": {
+            "verifies": verified,
+            "en_examen": review,
+            "rejetes": rejected,
+            "taux_auto_validation": taux_auto,
+        },
+        "score_ia_moyen": avg_score,
+        "par_categorie": par_categorie,
+        "par_marque": par_marque,
+        "valeur_catalogue": round(valeur_catalogue, 0),
+        "revenus_commission": round(revenus_commission, 2),
     }
 
 
