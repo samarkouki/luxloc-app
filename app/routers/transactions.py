@@ -88,11 +88,41 @@ def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
 
 @router.get("/user/{user_id}")
 def user_transactions(user_id: int, role: str = "renter", db: Session = Depends(get_db)):
-    """Historique des locations d'un utilisateur"""
+    """Historique des locations d'un utilisateur, enrichi avec les infos article."""
+    from app.models.models import ArticlePhoto
     if role == "renter":
         txs = db.query(Transaction).filter(Transaction.renter_id == user_id).all()
     else:
-        from sqlalchemy import and_
         txs = db.query(Transaction).join(Article).filter(Article.owner_id == user_id).all()
 
-    return [{"id": t.id, "status": t.status.value, "total": t.total_amount, "renter_id": t.renter_id, "article_id": t.article_id, "nb_days": t.nb_days, "created_at": t.created_at} for t in txs]
+    result = []
+    for t in txs:
+        article = db.query(Article).filter(Article.id == t.article_id).first()
+        # Photo principale de l'article (overview en base64)
+        overview = (db.query(ArticlePhoto)
+                    .filter(ArticlePhoto.article_id == t.article_id,
+                            ArticlePhoto.photo_type == "overview",
+                            ArticlePhoto.image_data.isnot(None))
+                    .first())
+        # Jours restants avant la fin de la location
+        jours_restants = None
+        if t.date_end:
+            delta = (t.date_end - datetime.utcnow()).days
+            jours_restants = max(0, delta)
+        result.append({
+            "id": t.id,
+            "status": t.status.value,
+            "total": t.total_amount,
+            "renter_id": t.renter_id,
+            "article_id": t.article_id,
+            "nb_days": t.nb_days,
+            "created_at": t.created_at,
+            "date_start": t.date_start,
+            "date_end": t.date_end,
+            "jours_restants": jours_restants,
+            # Infos article pour l'affichage
+            "article_title": article.title if article else "Article",
+            "article_brand": article.brand if article else "",
+            "article_photo": overview.image_data if overview else None,
+        })
+    return result
