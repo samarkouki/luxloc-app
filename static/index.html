@@ -7,6 +7,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -19,7 +21,6 @@
       -moz-osx-font-smoothing:grayscale;
       text-rendering:optimizeLegibility;
     }
-    /* Profondeur ambiante — halos chauds très discrets sur fond clair */
     body::before{
       content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
       background:
@@ -31,7 +32,6 @@
 
     select,input,button,textarea{font-family:'Montserrat',sans-serif;color:#1A1614}
 
-    /* Transitions fluides */
     button{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease,background .25s ease,opacity .2s ease,border-color .25s ease,color .2s ease}
     button:not(:disabled):hover{transform:translateY(-1px)}
     button:not(:disabled):active{transform:translateY(0) scale(.99)}
@@ -42,7 +42,6 @@
     img{transition:opacity .45s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
     a{transition:color .2s ease}
 
-    /* Scrollbar dorée raffinée sur fond clair */
     ::-webkit-scrollbar{width:9px}
     ::-webkit-scrollbar-track{background:#F2EEE8}
     ::-webkit-scrollbar-thumb{background:linear-gradient(#C9A84C,#8f7531);border-radius:5px;border:2px solid #F2EEE8}
@@ -147,7 +146,6 @@ function AuthScreen({onLogin, showToast}) {
   return <div style={{background:"#FAF8F4",minHeight:"100vh",color:"#1A1614",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <div style={{position:"absolute",top:-120,right:-120,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.06) 0%,transparent 70%)"}}/>
     <div style={{width:420,padding:0}}>
-      {/* Logo */}
       <div style={{display:"flex",justifyContent:"center",marginBottom:40}}>
         <div style={{textAlign:"center"}}>
           <div style={{display:"inline-block",marginBottom:18}}><LuxlocLogo size={64} showWordmark={false}/></div>
@@ -156,14 +154,12 @@ function AuthScreen({onLogin, showToast}) {
         </div>
       </div>
 
-      {/* Tabs */}
       <div style={{display:"flex",marginBottom:32,borderBottom:"1px solid rgba(26,22,20,0.08)"}}>
         {["login","register"].map(m=>
           <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"12px 0",background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:1,color:mode===m?"#C9A84C":"rgba(26,22,20,0.35)",borderBottom:mode===m?"2px solid #C9A84C":"2px solid transparent",transition:"all 0.2s"}}>{m==="login"?"CONNEXION":"INSCRIPTION"}</button>
         )}
       </div>
 
-      {/* Form */}
       <div style={{display:"grid",gap:16}}>
         {mode==="register"&&<>
           <div>
@@ -192,14 +188,12 @@ function AuthScreen({onLogin, showToast}) {
 
         <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading||!email||!password} style={{padding:"14px 0",border:"none",background:email&&password?"#C9A84C":"rgba(26,22,20,0.08)",color:email&&password?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email&&password?"pointer":"default",marginTop:8}}>{loading?"Chargement...":(mode==="login"?"SE CONNECTER":"CRÉER MON COMPTE")}</button>
 
-        {/* Separator */}
         <div style={{display:"flex",alignItems:"center",gap:12,margin:"8px 0"}}>
           <div style={{flex:1,height:1,background:"rgba(26,22,20,0.08)"}}/>
           <span style={{fontSize:11,color:"rgba(26,22,20,0.25)"}}>OU</span>
           <div style={{flex:1,height:1,background:"rgba(26,22,20,0.08)"}}/>
         </div>
 
-        {/* Demo login */}
         <button onClick={demoLogin} disabled={loading} style={{padding:"12px 0",border:"1px solid rgba(201,168,76,0.3)",background:"transparent",color:"#C9A84C",fontSize:12,letterSpacing:1,cursor:"pointer"}}>ACCÈS DÉMO RAPIDE (sophie@luxloc.fr)</button>
 
         <p style={{fontSize:10,color:"rgba(26,22,20,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, les données sont stockées localement via l'API FastAPI.</p>
@@ -213,14 +207,12 @@ const categories = [
   {id:"eyewear",label:"Lunettes",icon:"glasses"}
 ];
 
-// Icônes vectorielles raffinées — trait fin, élégance graphique
 const ICON_PATHS = {
   bag: <><path d="M8 14 L24 14 L23 27 L9 27 Z"/><path d="M12 14 V10 a4 4 0 0 1 8 0 V14"/><circle cx="11" cy="18" r="0.6" fill="currentColor"/><circle cx="21" cy="18" r="0.6" fill="currentColor"/></>,
   watch: <><circle cx="16" cy="16" r="6.5"/><path d="M12.5 9.5 L13.5 4.5 L18.5 4.5 L19.5 9.5 M12.5 22.5 L13.5 27.5 L18.5 27.5 L19.5 22.5"/><circle cx="23" cy="13.5" r="0.9"/><path d="M16 12.5 V16 L18.5 17.5"/></>,
   jewel: <><path d="M10 9 L22 9 L27 15 L16 27 L5 15 Z"/><path d="M10 9 L16 15 L22 9"/><path d="M5 15 L27 15"/><path d="M16 15 V27"/></>,
   hanger: <><circle cx="16" cy="7" r="2"/><path d="M16 9 V12 L4 21 L28 21 L16 12"/></>,
   glasses: <><circle cx="10" cy="17" r="5"/><circle cx="22" cy="17" r="5"/><path d="M15 17 L17 17"/><path d="M5 14 L2.5 12 M27 14 L29.5 12"/></>,
-  // Icônes utilitaires
   arrow: <path d="M6 16 L26 16 M19 9 L26 16 L19 23"/>,
   check: <path d="M7 16 L13 22 L25 10"/>,
   shield: <><path d="M16 4 L26 8 V16 a10 12 0 0 1 -10 12 a10 12 0 0 1 -10 -12 V8 Z"/><path d="M11 16 L15 20 L21 12"/></>,
@@ -237,7 +229,6 @@ function Icon({name, size=28, color="currentColor", stroke=1.4}) {
   return <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle"}}>{path}</svg>;
 }
 
-// Révélation au scroll — fait apparaître les sections en glissant vers le haut
 function Reveal({children, delay=0, style={}}) {
   const ref = React.useRef(null);
   const [inView, setInView] = useState(false);
@@ -252,7 +243,6 @@ function Reveal({children, delay=0, style={}}) {
   return <div ref={ref} className={"reveal"+(inView?" in":"")} style={{...style, transitionDelay:`${delay}s`}}>{children}</div>;
 }
 
-// Parallaxe doux : la cible suit le curseur avec un effet d'inertie
 function useMouseTilt(strength=12) {
   const ref = React.useRef(null);
   useEffect(() => {
@@ -273,7 +263,6 @@ function useMouseTilt(strength=12) {
   return ref;
 }
 
-// Hook : position de défilement courante
 function useScrollY() {
   const [y, setY] = useState(0);
   useEffect(() => {
@@ -288,7 +277,6 @@ function useScrollY() {
   return y;
 }
 
-// Compteur animé déclenché à l'entrée dans la vue
 function Counter({value, decimals=0, prefix="", suffix="", duration=1700}) {
   const [v, setV] = useState(0);
   const ref = React.useRef(null);
@@ -315,7 +303,6 @@ function Counter({value, decimals=0, prefix="", suffix="", duration=1700}) {
   return <span ref={ref}>{prefix}{decimals===0 ? Math.floor(v) : v.toFixed(decimals)}{suffix}</span>;
 }
 
-// Barre de progression de défilement — filet doré au sommet de l'écran
 function ScrollProgress() {
   const [p, setP] = useState(0);
   useEffect(() => {
@@ -333,41 +320,23 @@ function ScrollProgress() {
   </div>;
 }
 
-// ═══ LOGO LUXLOC — gemme taille brillant, vraie silhouette de diamant ═══
+// ═══ LOGO LUXLOC ═══
 function LuxlocLogo({size=36, showWordmark=true, wordmarkSize=18, tagline=null, color="#C9A84C", onClick}) {
   const [hover, setHover] = useState(false);
   return <div onClick={onClick} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)} style={{cursor:onClick?"pointer":"default",display:"flex",alignItems:"center",gap:size*0.38}}>
     <div style={{position:"relative",width:size,height:size,flexShrink:0}}>
-      {/* Halo doré subtil derrière la gemme */}
       <div style={{position:"absolute",inset:-size*0.18,borderRadius:"50%",background:`radial-gradient(circle, ${color}40 0%, transparent 60%)`,opacity:hover?1:0.45,transition:"opacity .5s ease",pointerEvents:"none"}}/>
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{position:"relative",transition:"transform .8s cubic-bezier(.2,.8,.2,1)",transform:hover?"rotateY(360deg)":"rotateY(0)",transformStyle:"preserve-3d"}}>
-        {/* ─── SILHOUETTE DE LA GEMME (taille brillant) ─── */}
-        {/* Une vraie forme de diamant : table large en haut, couronne, ceinture, culasse pointue */}
-        {/* Table (facette plate supérieure) : 16,10 → 48,10 */}
-        {/* Couronne descend vers la ceinture : 16,10 → 6,26 et 48,10 → 58,26 */}
-        {/* Culasse descend en pointe : 6,26 → 32,58 → 58,26 */}
         <path d="M 16 10 L 48 10 L 58 26 L 32 58 L 6 26 Z" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
-
-        {/* ─── LIGNE DE CEINTURE (girdle) horizontale, plus épaisse ─── */}
         <path d="M 6 26 L 58 26" stroke={color} strokeWidth="1.2"/>
-
-        {/* ─── FACETTES DE LA COURONNE (entre table et ceinture) ─── */}
-        {/* Lignes des coins de la table descendant vers le centre de la ceinture */}
         <path d="M 16 10 L 32 26" stroke={color} strokeWidth="0.7" opacity="0.65"/>
         <path d="M 48 10 L 32 26" stroke={color} strokeWidth="0.7" opacity="0.65"/>
-
-        {/* ─── FACETTES DE LA CULASSE (entre ceinture et pointe) ─── */}
-        {/* Lignes principales descendant vers la pointe */}
         <path d="M 6 26 L 32 58" stroke={color} strokeWidth="0.7" opacity="0.55"/>
         <path d="M 58 26 L 32 58" stroke={color} strokeWidth="0.7" opacity="0.55"/>
         <path d="M 19 26 L 32 58" stroke={color} strokeWidth="0.5" opacity="0.4"/>
         <path d="M 45 26 L 32 58" stroke={color} strokeWidth="0.5" opacity="0.4"/>
         <path d="M 32 26 L 32 58" stroke={color} strokeWidth="0.5" opacity="0.4"/>
-
-        {/* ─── LETTRE L AU CENTRE DE LA TABLE, fine et élégante ─── */}
         <path d="M 28 14 L 28 22 L 36 22" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-
-        {/* ─── ÉCLAT lumineux qui balaye la gemme (toujours actif, plus visible au survol) ─── */}
         <defs>
           <linearGradient id="shimmer" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0"/>
@@ -378,8 +347,6 @@ function LuxlocLogo({size=36, showWordmark=true, wordmarkSize=18, tagline=null, 
         <path d="M 16 10 L 48 10 L 58 26 L 32 58 L 6 26 Z" fill="url(#shimmer)">
           <animate attributeName="opacity" values="0;1;0" dur="3.5s" repeatCount="indefinite"/>
         </path>
-
-        {/* ─── POINT DE LUMIÈRE pulsant au-dessus de la table ─── */}
         <circle cx="32" cy="5" r="1.5" fill={color}>
           <animate attributeName="opacity" values="1;0.3;1" dur="2.4s" repeatCount="indefinite"/>
         </circle>
@@ -392,10 +359,8 @@ function LuxlocLogo({size=36, showWordmark=true, wordmarkSize=18, tagline=null, 
   </div>;
 }
 
-// ═══ TOAST ═══
 function Toast({msg,onDone}){useEffect(()=>{const t=setTimeout(onDone,3000);return()=>clearTimeout(t)},[]);return <div className="toast">{msg}</div>}
 
-// ═══ NAV ═══
 function Nav({screen,setScreen,user,onLogout}){
   return <nav style={{position:"sticky",top:0,zIndex:50,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 clamp(16px,4vw,48px)",height:64,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(201,168,76,0.12)"}}>
     <div style={{display:"flex",alignItems:"center",gap:28}}>
@@ -422,7 +387,6 @@ function Landing({setScreen,articles,stats}){
   const [hovered,setHovered]=useState(null);
   useEffect(()=>{setTimeout(()=>setLoaded(true),100)},[]);
 
-  // Pieces choisies pour l empilement du hero
   const withPhoto = (articles||[]).filter(a=>a.photo);
   const feat = (withPhoto.length>=2 ? withPhoto : (articles||[])).slice(0,3);
   const featuredGrid = (articles||[]).slice(0,4);
@@ -437,14 +401,12 @@ function Landing({setScreen,articles,stats}){
 
   return <div style={{background:"#FAF8F4",color:"#1A1614",overflowX:"hidden"}}>
 
-    {/* ════ HERO ════ */}
     <section style={{position:"relative",padding:"clamp(60px,9vw,140px) clamp(20px,5vw,80px) clamp(40px,6vw,80px)",overflow:"hidden"}}>
       <div style={{position:"absolute",top:-150,right:-200,width:780,height:780,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,0.10) 0%,transparent 60%)",pointerEvents:"none",transform:`translate3d(0,${scrollY*0.25}px,0)`,willChange:"transform"}}/>
       <div style={{position:"absolute",bottom:-200,left:-160,width:520,height:520,borderRadius:"50%",background:"radial-gradient(circle,rgba(109,46,70,0.06) 0%,transparent 65%)",pointerEvents:"none",transform:`translate3d(0,${scrollY*-0.15}px,0)`,willChange:"transform"}}/>
 
       <div style={{maxWidth:1380,margin:"0 auto",display:"grid",gridTemplateColumns:"1.05fr 0.95fr",gap:"clamp(40px,5vw,90px)",alignItems:"center",position:"relative"}}>
 
-        {/* Cote texte */}
         <div style={fadeIn(0)}>
           <div style={{fontSize:11,letterSpacing:5,color:"#8a6e26",marginBottom:36,fontWeight:600,display:"flex",alignItems:"center",gap:14}}>
             <span style={{display:"inline-block",width:36,height:1,background:"#C9A84C"}}/>
@@ -467,16 +429,13 @@ function Landing({setScreen,articles,stats}){
           </div>
         </div>
 
-        {/* Cote visuel — pile de cartes asymetriques */}
         <div style={{position:"relative",height:"clamp(440px,52vh,600px)",transform:`translateY(${-scrollY*0.12}px)`,willChange:"transform",...fadeIn(0.25)}}>
         <div ref={tiltRef} style={{position:"absolute",inset:0,transition:"transform .4s cubic-bezier(0.2,0.8,0.2,1)"}}>
 
-          {/* Carte arriere (decorative) */}
           <div style={{position:"absolute",top:30,left:"6%",width:"56%",height:"68%",background:"linear-gradient(155deg,#6D2E46 0%,#1A1614 100%)",transform:"rotate(-5deg)",boxShadow:"0 22px 60px rgba(26,22,20,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(80px,11vw,160px)",color:"rgba(201,168,76,0.16)",fontWeight:200}}>{feat[0]?.brand?.[0]||"H"}</span>
           </div>
 
-          {/* Carte milieu — produit principal */}
           <div style={{position:"absolute",top:"12%",left:"28%",width:"60%",height:"82%",background:"#FFFFFF",boxShadow:"0 32px 90px rgba(26,22,20,0.18)",transform:"rotate(2.5deg)",overflow:"hidden",border:"1px solid rgba(26,22,20,0.04)"}}>
             <div style={{height:"72%",background:feat[1]?.photo?`url(${feat[1].photo}) center/cover`:"linear-gradient(160deg,#E8E0D0 0%,#A89878 100%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
               {!feat[1]?.photo&&<span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(60px,9vw,130px)",color:"rgba(26,22,20,0.18)",fontWeight:200}}>{feat[1]?.brand?.[0]||"C"}</span>}
@@ -491,7 +450,6 @@ function Landing({setScreen,articles,stats}){
             </div>
           </div>
 
-          {/* Badge IA flottant */}
           <div style={{position:"absolute",bottom:"4%",right:"2%",padding:"18px 24px",background:"#1A1614",color:"#FAF8F4",boxShadow:"0 14px 44px rgba(26,22,20,0.32)",animation:"float 5s ease-in-out infinite"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:"#5DCAA5",boxShadow:"0 0 14px rgba(93,202,165,0.8)"}}/>
@@ -504,7 +462,6 @@ function Landing({setScreen,articles,stats}){
         </div>
       </div>
 
-      {/* Stats sous le hero — chiffres animés au défilement */}
       <div style={{maxWidth:1380,margin:"clamp(60px,8vw,100px) auto 0",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0,borderTop:"1px solid rgba(26,22,20,0.1)",paddingTop:36,...fadeIn(0.5)}}>
         {[
           {render:<><Counter value={(stats?.articles||8)} suffix="+"/></>, l:"PIÈCES CERTIFIÉES"},
@@ -520,7 +477,6 @@ function Landing({setScreen,articles,stats}){
       </div>
     </section>
 
-    {/* ════ MAISONS DE PRESTIGE — bande défilante ════ */}
     <section style={{padding:"clamp(36px,5vw,56px) 0",borderTop:"1px solid rgba(26,22,20,0.08)",borderBottom:"1px solid rgba(26,22,20,0.08)",background:"#FFFFFF",overflow:"hidden"}}>
       <div style={{textAlign:"center",fontSize:10,letterSpacing:5,color:"rgba(26,22,20,0.4)",marginBottom:28,fontWeight:600}}>MAISONS REPRÉSENTÉES SUR LA PLATEFORME</div>
       <div className="marquee-track">
@@ -537,7 +493,6 @@ function Landing({setScreen,articles,stats}){
       </div>
     </section>
 
-    {/* ════ MANIFESTO ════ */}
     <section style={{padding:"clamp(80px,10vw,160px) clamp(20px,5vw,80px)",background:"#1A1614",color:"#FAF8F4",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",top:"50%",left:"50%",transform:`translate(-50%,calc(-50% + ${(scrollY-1200)*0.05}px))`,width:1400,height:700,background:"radial-gradient(ellipse,rgba(201,168,76,0.10) 0%,transparent 65%)",pointerEvents:"none",willChange:"transform"}}/>
       <Reveal><div style={{maxWidth:1100,margin:"0 auto",textAlign:"center",position:"relative"}}>
@@ -551,7 +506,6 @@ function Landing({setScreen,articles,stats}){
       </div></Reveal>
     </section>
 
-    {/* ════ HOW IT WORKS ════ */}
     <section style={{padding:"clamp(80px,10vw,140px) clamp(20px,5vw,80px)"}}>
       <Reveal><div style={{maxWidth:1300,margin:"0 auto"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1.4fr",gap:60,marginBottom:72,alignItems:"end"}}>
@@ -582,7 +536,6 @@ function Landing({setScreen,articles,stats}){
       </div></Reveal>
     </section>
 
-    {/* ════ FEATURED — selection editoriale ════ */}
     {featuredGrid.length>0 && <section style={{padding:"clamp(60px,8vw,120px) clamp(20px,5vw,80px)",background:"#FFFFFF",borderTop:"1px solid rgba(26,22,20,0.06)",borderBottom:"1px solid rgba(26,22,20,0.06)"}}>
       <Reveal><div style={{maxWidth:1380,margin:"0 auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"end",marginBottom:48,flexWrap:"wrap",gap:20}}>
@@ -609,7 +562,6 @@ function Landing({setScreen,articles,stats}){
       </div></Reveal>
     </section>}
 
-    {/* ════ CATEGORIES ════ */}
     <section style={{padding:"clamp(80px,10vw,140px) clamp(20px,5vw,80px)"}}>
       <Reveal><div style={{maxWidth:1300,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:56}}>
@@ -626,7 +578,6 @@ function Landing({setScreen,articles,stats}){
       </div></Reveal>
     </section>
 
-    {/* ════ CTA FINAL ════ */}
     <section style={{padding:"clamp(80px,10vw,160px) clamp(20px,5vw,80px)",textAlign:"center",background:"linear-gradient(180deg,#FAF8F4 0%,#F0E8D8 100%)"}}>
       <Reveal><div style={{maxWidth:820,margin:"0 auto"}}>
         <div style={{fontSize:11,letterSpacing:5,color:"#C9A84C",marginBottom:24,fontWeight:600}}>REJOIGNEZ LA MAISON</div>
@@ -640,7 +591,6 @@ function Landing({setScreen,articles,stats}){
       </div></Reveal>
     </section>
 
-    {/* ════ PIED DE PAGE — discret, raffiné ════ */}
     <footer style={{background:"#1A1614",color:"rgba(245,240,235,0.7)",padding:"clamp(60px,7vw,100px) clamp(20px,5vw,80px) clamp(40px,5vw,60px)"}}>
       <div style={{maxWidth:1380,margin:"0 auto"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:48,paddingBottom:48,borderBottom:"1px solid rgba(245,240,235,0.1)"}}>
@@ -737,7 +687,6 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
           body:{ image_data: photos[i] || null }
         });
       }
-      // Envoi des documents de confiance (facture + pièce d'identité)
       await api(`/articles/${articleId}/documents`,{
         method:"POST",
         body:{
@@ -778,7 +727,6 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
         {["Informations","Documents","Photos article","Analyse IA"].map((s,i)=><div key={i} style={{flex:1}}><div style={{height:2,background:i<=step?"#C9A84C":"rgba(26,22,20,0.08)",transition:"background 0.4s",marginBottom:8}}/><div style={{fontSize:11,color:i<=step?"#C9A84C":"rgba(26,22,20,0.3)",letterSpacing:1}}>{s}</div></div>)}
       </div>
 
-      {/* STEP 0 — Infos article */}
       {step===0&&<div style={{display:"grid",gap:20}}>
         <div><label style={{fontSize:12,color:"rgba(26,22,20,0.5)",display:"block",marginBottom:8}}>Catégorie</label>
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
@@ -793,7 +741,6 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
         <button onClick={createArticle} disabled={!cat||!brand} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:cat&&brand?"#C9A84C":"rgba(26,22,20,0.08)",color:cat&&brand?"#1A1614":"rgba(26,22,20,0.25)",cursor:cat&&brand?"pointer":"default",fontWeight:600}}>SUIVANT — DOCUMENTS →</button>
       </div>}
 
-      {/* STEP 1 — Pièce d'identité + Facture */}
       {step===1&&<div style={{display:"grid",gap:24}}>
         <p style={{fontSize:13,color:"rgba(26,22,20,0.5)"}}>Pour garantir la confiance, nous vérifions l'identité du propriétaire et la preuve d'achat de l'article.</p>
 
@@ -828,7 +775,6 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
         <button onClick={()=>setStep(2)} disabled={!idDoc||!invoice} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",background:idDoc&&invoice?"#C9A84C":"rgba(26,22,20,0.08)",color:idDoc&&invoice?"#1A1614":"rgba(26,22,20,0.25)",cursor:idDoc&&invoice?"pointer":"default",fontWeight:600}}>SUIVANT — PHOTOS ARTICLE →</button>
       </div>}
 
-      {/* STEP 2 — Photos de l'article */}
       {step===2&&!analyzing&&<div>
         <p style={{fontSize:13,color:"rgba(26,22,20,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Lumière naturelle, fond neutre de préférence.</p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
@@ -848,7 +794,6 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
         <button onClick={()=>{uploadPhotosAndDocs().then(()=>{setStep(3);startAnalysis();});}} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(26,22,20,0.08)",color:nbPhotos>=3?"#1A1614":"rgba(26,22,20,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
       </div>}
 
-      {/* STEP 3 — Analyse */}
       {step===3&&analyzing&&<div style={{textAlign:"center",padding:"60px 0"}}>
         <div style={{width:120,height:120,borderRadius:"50%",margin:"0 auto 32px",border:"2px solid rgba(201,168,76,0.2)",position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{position:"absolute",inset:0,borderRadius:"50%",border:"2px solid transparent",borderTopColor:"#C9A84C",animation:"spin 1s linear infinite"}}/>
@@ -925,7 +870,6 @@ function OwnerResult({setScreen,verifResult,showToast}){
 }
 
 // ═══ RENTER BROWSE ═══
-// Brand visual configs for catalogue
 const BRAND_VISUALS = {
   "Louis Vuitton": {bg:"linear-gradient(145deg,#3D2B1F 0%,#6B4226 50%,#8B6914 100%)",pattern:"LV",emoji:""},
   "Gucci": {bg:"linear-gradient(145deg,#1A3C34 0%,#2D6B4F 50%,#C9A84C 100%)",pattern:"GG",emoji:""},
@@ -942,7 +886,6 @@ const BRAND_VISUALS = {
 };
 function getBrandVisual(brand) { return BRAND_VISUALS[brand] || {bg:"linear-gradient(145deg,rgba(109,46,70,0.3),rgba(201,168,76,0.15))",pattern:brand?brand.substring(0,2):"?",emoji:""}; }
 
-// Badge de vérification — reflète le vrai statut renvoyé par l'API
 function verifBadge(status, score) {
   const s = score!=null ? " — "+score.toFixed(2) : "";
   if(status==="verified") return {label:"VÉRIFIÉ IA"+s, color:"#5DCAA5", border:"rgba(93,202,165,0.35)", bg:"rgba(45,106,79,0.14)"};
@@ -952,7 +895,6 @@ function verifBadge(status, score) {
 }
 function ProductImage({brand,articleId,photo,hovered,style}) {
   const v = getBrandVisual(brand);
-  // Priorité : photo renvoyée par le backend, puis cache mémoire local, puis visuel de marque
   const uploadedImg = photo || (window._luxlocPhotos && window._luxlocPhotos[articleId]);
   return <div style={{...style,background:v.bg,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all 0.4s",overflow:"hidden"}}>
     {uploadedImg ? <img src={uploadedImg} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:hovered?1:0.85,transform:hovered?"scale(1.06)":"scale(1)",transition:"opacity .4s ease,transform .6s cubic-bezier(.2,.8,.2,1)"}}/>
@@ -1148,7 +1090,6 @@ function OwnerDashboard({setScreen,user,showToast}){
         </div>
       </div>
 
-      {/* Stats cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:40}}>
         {[{v:articles.length,l:"Articles déposés",c:"#C9A84C"},{v:articles.filter(a=>a.is_available).length,l:"Disponibles",c:"#5DCAA5"},{v:activeRentals,l:"Locations actives",c:"#E07A2F"},{v:totalRevenue.toFixed(0)+"€",l:"Revenus totaux",c:"#C9A84C"}].map((s,i)=>
           <div key={i} style={{padding:"24px 20px",border:"1px solid rgba(26,22,20,0.06)",textAlign:"center"}}>
@@ -1158,7 +1099,6 @@ function OwnerDashboard({setScreen,user,showToast}){
         )}
       </div>
 
-      {/* Articles list */}
       <div style={{marginBottom:40}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22}}>Mes articles</h2>
@@ -1185,7 +1125,6 @@ function OwnerDashboard({setScreen,user,showToast}){
         </div>)}
       </div>
 
-      {/* Transactions / locataires */}
       <div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22,marginBottom:20}}>Historique des locations</h2>
         {transactions.length===0?<div style={{padding:40,border:"1px dashed rgba(26,22,20,0.1)",textAlign:"center",color:"rgba(26,22,20,0.3)"}}>Aucune location pour le moment.</div>
@@ -1201,7 +1140,6 @@ function OwnerDashboard({setScreen,user,showToast}){
         </div>)}
       </div>
 
-      {/* Profile section */}
       <div style={{marginTop:40,padding:24,border:"1px solid rgba(26,22,20,0.08)"}}>
         <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>MON PROFIL</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
@@ -1237,7 +1175,6 @@ function RenterPayment({setScreen,article,txData,showToast}){
       <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PAIEMENT SÉCURISÉ</div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,marginBottom:32}}>Finaliser la réservation</h1>
 
-      {/* Order summary */}
       <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:24,marginBottom:24}}>
         <div style={{display:"flex",gap:16,marginBottom:20}}>
           <ProductImage brand={article.brand} articleId={article.id} photo={article.photo} style={{width:80,height:80,flexShrink:0}}/>
@@ -1256,7 +1193,6 @@ function RenterPayment({setScreen,article,txData,showToast}){
       </div>
 
       {!paid?<>
-      {/* Card form */}
       <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:24,marginBottom:24}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20}}>
           <Icon name="card" size={20} stroke={1.4}/>
@@ -1321,7 +1257,6 @@ function RenterProfile({setScreen,user,showToast}){
         </div>
       </div>
 
-      {/* Stats */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:40}}>
         {[{v:transactions.length,l:"Locations effectuées",c:"#C9A84C"},{v:totalSpent.toFixed(0)+"€",l:"Total dépensé",c:"#5DCAA5"},{v:transactions.filter(t=>t.status==="active"||t.status==="confirmed").length,l:"En cours",c:"#E07A2F"}].map((s,i)=>
           <div key={i} style={{padding:"24px 20px",border:"1px solid rgba(26,22,20,0.06)",textAlign:"center"}}>
@@ -1331,7 +1266,6 @@ function RenterProfile({setScreen,user,showToast}){
         )}
       </div>
 
-      {/* Rental history */}
       <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:22,marginBottom:20}}>Mes locations</h2>
       {transactions.length===0?<div style={{padding:40,border:"1px dashed rgba(26,22,20,0.1)",textAlign:"center",color:"rgba(26,22,20,0.3)"}}>Aucune location pour le moment. <span style={{color:"#C9A84C",cursor:"pointer"}} onClick={()=>setScreen(SCREENS.RENTER_BROWSE)}>Explorer le catalogue →</span></div>
       :transactions.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:16,padding:16,border:"1px solid rgba(26,22,20,0.06)",marginBottom:8}}>
@@ -1353,7 +1287,6 @@ function RenterProfile({setScreen,user,showToast}){
         {(t.status==="active"||t.status==="confirmed")&&<button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:10,letterSpacing:1,padding:"8px 16px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>RETOUR</button>}
       </div>)}
 
-      {/* Profile info */}
       <div style={{marginTop:40,padding:24,border:"1px solid rgba(26,22,20,0.08)"}}>
         <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:16}}>MON PROFIL</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:20}}>
@@ -1396,7 +1329,6 @@ function ModelIA(){
     </div>
     <p style={{color:C.muted,fontSize:13,marginBottom:32}}>{info.modele} · {info.jeu_de_donnees.taille_totale} échantillons ({info.jeu_de_donnees.entrainement} entraînement / {info.jeu_de_donnees.test} test) · 9 features d'image</p>
 
-    {/* Métriques */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:14}}>
       {metricCards.map(c=>
         <div key={c.l} style={{padding:"20px",background:C.card,border:`1px solid ${C.border}`}}>
@@ -1408,7 +1340,6 @@ function ModelIA(){
     <p style={{color:C.muted,fontSize:12,marginBottom:36}}>Validation croisée 5-fold — F1 : <span style={{color:C.cream}}>{m.f1_validation_croisee}</span></p>
 
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:36}}>
-      {/* Matrice de confusion */}
       <div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Matrice de confusion</h2>
         <div style={{display:"grid",gridTemplateColumns:"70px 1fr 1fr",gap:6,fontSize:11}}>
@@ -1435,7 +1366,6 @@ function ModelIA(){
           </div>
         </div>
       </div>
-      {/* Importance des features */}
       <div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Importance des features</h2>
         <div style={{display:"flex",flexDirection:"column",gap:9}}>
@@ -1461,22 +1391,169 @@ function ModelIA(){
     </div>
   </div>;
 }
-// ═══ ÉCRAN STATISTIQUES ═══
-function StatsScreen(){
+
+// ═══ ÉCRAN STATISTIQUES / DASHBOARD ADMIN ═══
+function StatsScreen({showToast}){
   const [stats,setStats]=useState(null);
+  const [monthly,setMonthly]=useState(null);
+  const [returnsStats,setReturnsStats]=useState(null);
+  const [returnsDetail,setReturnsDetail]=useState([]);
   const [err,setErr]=useState(false);
-  useEffect(()=>{ api("/articles/platform/stats").then(setStats).catch(()=>setErr(true)); },[]);
+  const [months,setMonths]=useState(12);
+  const [detailLimit,setDetailLimit]=useState(20);
+  const [refreshing,setRefreshing]=useState(false);
+  const revenueRef=React.useRef(null);
+  const catRef=React.useRef(null);
+  const statusRef=React.useRef(null);
+  const brandRef=React.useRef(null);
+  const returnsMonthlyRef=React.useRef(null);
+  const returnsEvolutionRef=React.useRef(null);
+  const chartsRef=React.useRef({});
+
+  const loadStats = () => api("/articles/platform/stats").then(setStats).catch(()=>setErr(true));
+  const loadMonthly = (m) => api(`/articles/platform/stats/monthly?months_back=${m}`).then(setMonthly).catch(()=>{});
+  const loadReturnsStats = (m) => api(`/returns/platform/stats?months_back=${m}`).then(setReturnsStats).catch(()=>{});
+  const loadReturnsDetail = (limit) => api(`/returns/platform/detail?limit=${limit}`).then(setReturnsDetail).catch(()=>{});
+
+  useEffect(()=>{ loadStats(); },[]);
+  useEffect(()=>{ loadMonthly(months); loadReturnsStats(months); },[months]);
+  useEffect(()=>{ loadReturnsDetail(detailLimit); },[detailLimit]);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    setErr(false);
+    try {
+      await Promise.all([loadStats(), loadMonthly(months), loadReturnsStats(months), loadReturnsDetail(detailLimit)]);
+      showToast&&showToast("✓ Statistiques actualisées");
+    }
+    finally { setRefreshing(false); }
+  };
+
+  // Clics sur les graphs : petit retour contextuel (rend les graphs interactifs au-delà du simple survol)
+  const explainSlice = (chartLabel) => (evt, elements, chart) => {
+    if(!elements || !elements.length) return;
+    const idx = elements[0].index;
+    const ds = chart.data.datasets[0].data;
+    const total = ds.reduce((a,b)=>a+b,0);
+    const label = chart.data.labels[idx];
+    const value = ds[idx];
+    const pct = total? (value/total*100).toFixed(1) : 0;
+    showToast&&showToast(`${chartLabel} — ${label} : ${value} (${pct}%)`);
+  };
+  const explainBar = (chartLabel, suffix="") => (evt, elements, chart) => {
+    if(!elements || !elements.length) return;
+    const idx = elements[0].index;
+    const label = chart.data.labels[idx];
+    const value = chart.data.datasets[0].data[idx];
+    showToast&&showToast(`${chartLabel} — ${label} : ${value}${suffix}`);
+  };
+  const explainReturnsMonth = (evt, elements, chart) => {
+    if(!elements || !elements.length) return;
+    const idx = elements[0].index;
+    const label = chart.data.labels[idx];
+    const onTime = chart.data.datasets[0].data[idx];
+    const late = chart.data.datasets[1].data[idx];
+    const total = onTime+late;
+    const pct = total? (onTime/total*100).toFixed(0) : 0;
+    showToast&&showToast(`${label} — ${total} retours : ${onTime} à temps (${pct}%), ${late} en retard`);
+  };
 
   const C={gold:"#C9A84C",ink:"#1A1614",muted:"rgba(26,22,20,0.45)",green:"#2D6A4F",border:"rgba(26,22,20,0.08)",card:"rgba(26,22,20,0.02)"};
   const catLabels={bags:"Sacs",watches:"Montres",jewelry:"Bijoux",clothing:"Vêtements",eyewear:"Lunettes"};
+  const palette=["#C9A84C","#6D2E46","#5DCAA5","#EF9F27","#8B6914","#2D6A4F","#5A0A0A","#1A1A2E","#8f7531","#C76B2A"];
+
+  useEffect(()=>{
+    if(!stats || !window.Chart) return;
+    const ChartLib = window.Chart;
+    if(window.ChartDataLabels) ChartLib.register(window.ChartDataLabels);
+
+    Object.values(chartsRef.current).forEach(c=>c&&c.destroy&&c.destroy());
+    chartsRef.current={};
+
+    const pctFormatter=(value,ctx)=>{
+      const total=ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+      return total? (value/total*100).toFixed(1)+"%" : "";
+    };
+
+    if(statusRef.current){
+      const v=stats.verification;
+      chartsRef.current.status = new ChartLib(statusRef.current,{
+        type:"doughnut",
+        data:{ labels:["Vérifiés","En examen","Rejetés"], datasets:[{ data:[v.verifies,v.en_examen,v.rejetes], backgroundColor:["#5DCAA5","#EF9F27","#E08585"] }] },
+        options:{ onClick:explainSlice("Vérification IA"), onHover:(e,els)=>{e.native.target.style.cursor=els.length?"pointer":"default";}, plugins:{ legend:{position:"bottom",labels:{color:C.ink,font:{size:11}}}, datalabels:{color:"#fff",font:{weight:"bold",size:11},formatter:pctFormatter} } }
+      });
+    }
+
+    if(catRef.current){
+      const entries=Object.entries(stats.par_categorie);
+      chartsRef.current.cat = new ChartLib(catRef.current,{
+        type:"doughnut",
+        data:{ labels:entries.map(([c])=>catLabels[c]||c), datasets:[{ data:entries.map(([,n])=>n), backgroundColor:palette }] },
+        options:{ onClick:explainSlice("Catégorie"), onHover:(e,els)=>{e.native.target.style.cursor=els.length?"pointer":"default";}, plugins:{ legend:{position:"bottom",labels:{color:C.ink,font:{size:11}}}, datalabels:{color:"#1A1614",font:{weight:"bold",size:11},formatter:pctFormatter} } }
+      });
+    }
+
+    if(brandRef.current){
+      const entries=Object.entries(stats.par_marque);
+      chartsRef.current.brand = new ChartLib(brandRef.current,{
+        type:"pie",
+        data:{ labels:entries.map(([b])=>b), datasets:[{ data:entries.map(([,n])=>n), backgroundColor:palette.concat(palette) }] },
+        options:{ onClick:explainSlice("Maison"), onHover:(e,els)=>{e.native.target.style.cursor=els.length?"pointer":"default";}, plugins:{ legend:{position:"bottom",labels:{color:C.ink,font:{size:10}}}, datalabels:{color:"#fff",font:{weight:"bold",size:10},formatter:pctFormatter} } }
+      });
+    }
+  },[stats]);
+
+  useEffect(()=>{
+    if(!monthly || !window.Chart || !revenueRef.current) return;
+    const ChartLib = window.Chart;
+    if(chartsRef.current.revenue) chartsRef.current.revenue.destroy();
+    chartsRef.current.revenue = new ChartLib(revenueRef.current,{
+      type:"bar",
+      data:{ labels:monthly.labels, datasets:[{ label:"Commission (€)", data:monthly.values, backgroundColor:C.gold }] },
+      options:{ onClick:explainBar("Commission"," €"), onHover:(e,els)=>{e.native.target.style.cursor=els.length?"pointer":"default";}, plugins:{ legend:{display:false}, datalabels:{display:false} }, scales:{ x:{ticks:{color:C.muted}}, y:{ticks:{color:C.muted}} } }
+    });
+  },[monthly]);
+
+  useEffect(()=>{
+    if(!returnsStats || !window.Chart) return;
+    const ChartLib = window.Chart;
+
+    if(returnsMonthlyRef.current){
+      if(chartsRef.current.returnsMonthly) chartsRef.current.returnsMonthly.destroy();
+      const m=returnsStats.mensuel;
+      chartsRef.current.returnsMonthly = new ChartLib(returnsMonthlyRef.current,{
+        type:"bar",
+        data:{ labels:m.labels, datasets:[
+          { label:"À temps", data:m.a_temps, backgroundColor:"#5DCAA5" },
+          { label:"En retard", data:m.en_retard, backgroundColor:"#E08585" },
+        ]},
+        options:{
+          onClick:explainReturnsMonth, onHover:(e,els)=>{e.native.target.style.cursor=els.length?"pointer":"default";},
+          plugins:{ legend:{position:"bottom",labels:{color:C.ink,font:{size:11}}}, datalabels:{display:false} },
+          scales:{ x:{stacked:true,ticks:{color:C.muted}}, y:{stacked:true,ticks:{color:C.muted}} }
+        }
+      });
+    }
+
+    if(returnsEvolutionRef.current){
+      if(chartsRef.current.returnsEvolution) chartsRef.current.returnsEvolution.destroy();
+      const e=returnsStats.evolution_etat;
+      const pctFormatter2=(value,ctx)=>{
+        const total=ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+        return total? (value/total*100).toFixed(1)+"%" : "";
+      };
+      chartsRef.current.returnsEvolution = new ChartLib(returnsEvolutionRef.current,{
+        type:"doughnut",
+        data:{ labels:["État amélioré","État inchangé","État dégradé"], datasets:[{ data:[e.ameliore,e.identique,e.degrade], backgroundColor:["#5DCAA5","#C9A84C","#E08585"] }] },
+        options:{ onClick:explainSlice("État au retour"), onHover:(ev,els)=>{ev.native.target.style.cursor=els.length?"pointer":"default";}, plugins:{ legend:{position:"bottom",labels:{color:C.ink,font:{size:11}}}, datalabels:{color:"#fff",font:{weight:"bold",size:11},formatter:pctFormatter2} } }
+      });
+    }
+  },[returnsStats]);
 
   if(err) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Impossible de charger les statistiques.</div>;
   if(!stats) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Chargement des statistiques…</div>;
 
   const v=stats.verification;
-  const maxCat=Math.max(...Object.values(stats.par_categorie),1);
-  const maxBrand=Math.max(...Object.values(stats.par_marque),1);
-
   const bigCards=[
     {l:"Articles au catalogue",v:stats.total_articles,c:C.gold},
     {l:"Taux d'auto-validation IA",v:v.taux_auto_validation+" %",c:C.green},
@@ -1487,10 +1564,12 @@ function StatsScreen(){
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:C.ink}}>
     <div style={{maxWidth:1100,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{fontSize:11,letterSpacing:4,color:C.gold,marginBottom:8}}>SUPERVISION DE LA PLATEFORME<span className="api-badge">GET /platform/stats</span></div>
-      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:8}}>Statistiques</h1>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:16,marginBottom:8}}>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,margin:0}}>Dashboard</h1>
+        <button onClick={refresh} disabled={refreshing} style={{fontSize:11,letterSpacing:1,padding:"10px 18px",border:`1px solid ${C.border}`,background:"transparent",color:C.ink,cursor:refreshing?"default":"pointer",fontWeight:600,opacity:refreshing?0.5:1}}>{refreshing?"ACTUALISATION…":"↻ ACTUALISER"}</button>
+      </div>
       <p style={{fontSize:13,color:C.muted,marginBottom:36}}>Vue d'ensemble en temps réel — données agrégées depuis l'API LUXLOC.</p>
 
-      {/* Grandes cartes */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:36}}>
         {bigCards.map((c,i)=>
           <div key={i} style={{padding:"24px 20px",background:C.card,border:`1px solid ${C.border}`}}>
@@ -1500,12 +1579,12 @@ function StatsScreen(){
         )}
       </div>
 
-      {/* Ligne secondaire : petites stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:44}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:44}}>
         {[
           {l:"Utilisateurs inscrits",v:stats.total_utilisateurs},
           {l:"Locations réalisées",v:stats.total_locations},
           {l:"Revenus de commission",v:stats.revenus_commission+" €"},
+          {l:"Retours à temps",v:returnsStats?returnsStats.taux_ponctualite+" %":"—"},
         ].map((c,i)=>
           <div key={i} style={{padding:"18px 20px",border:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontSize:12,color:C.muted}}>{c.l}</span>
@@ -1514,57 +1593,100 @@ function StatsScreen(){
         )}
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40}}>
-        {/* Statut de vérification */}
-        <div>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:18}}>Statut de vérification IA</h2>
-          {[
-            {l:"Vérifiés (auto)",n:v.verifies,col:"#5DCAA5"},
-            {l:"En examen expert",n:v.en_examen,col:"#EF9F27"},
-            {l:"Rejetés",n:v.rejetes,col:"#E08585"},
-          ].map((r,i)=>{
-            const tot=v.verifies+v.en_examen+v.rejetes||1;
-            return <div key={i} style={{marginBottom:16}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:5}}>
-                <span>{r.l}</span><span style={{color:C.muted}}>{r.n}</span>
-              </div>
-              <div style={{height:8,background:"rgba(26,22,20,0.06)"}}>
-                <div style={{height:8,width:`${r.n/tot*100}%`,background:r.col,transition:"width 1s ease-out"}}/>
-              </div>
-            </div>;
-          })}
+      <div style={{marginBottom:44}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,margin:0}}>Revenus de commission par mois</h2>
+          <div style={{display:"flex",gap:6}}>
+            {[3,6,12,24].map(m=>
+              <button key={m} onClick={()=>setMonths(m)} style={{fontSize:11,padding:"6px 12px",border:`1px solid ${months===m?C.gold:C.border}`,background:months===m?C.gold:"transparent",color:months===m?C.ink:C.muted,cursor:"pointer",fontWeight:600}}>{m}M</button>
+            )}
+          </div>
         </div>
-
-        {/* Répartition par catégorie */}
-        <div>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:18}}>Articles par catégorie</h2>
-          {Object.entries(stats.par_categorie).sort((a,b)=>b[1]-a[1]).map(([cat,n],i)=>
-            <div key={i} style={{marginBottom:13}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}>
-                <span>{catLabels[cat]||cat}</span><span style={{color:C.muted}}>{n}</span>
-              </div>
-              <div style={{height:8,background:"rgba(26,22,20,0.06)"}}>
-                <div style={{height:8,width:`${n/maxCat*100}%`,background:C.gold}}/>
-              </div>
-            </div>
-          )}
+        <div style={{border:`1px solid ${C.border}`,padding:"20px",height:260}}>
+          <canvas ref={revenueRef}></canvas>
         </div>
       </div>
 
-      {/* Répartition par marque */}
-      <div style={{marginTop:44}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,marginBottom:44}}>
+        <div>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:18}}>Statut de vérification IA</h2>
+          <div style={{border:`1px solid ${C.border}`,padding:20,height:280}}>
+            <canvas ref={statusRef}></canvas>
+          </div>
+        </div>
+        <div>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:18}}>Articles par catégorie</h2>
+          <div style={{border:`1px solid ${C.border}`,padding:20,height:280}}>
+            <canvas ref={catRef}></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div style={{marginBottom:44}}>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:18}}>Maisons représentées</h2>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px 40px"}}>
-          {Object.entries(stats.par_marque).map(([brand,n],i)=>
-            <div key={i}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}>
-                <span>{brand}</span><span style={{color:C.muted}}>{n}</span>
-              </div>
-              <div style={{height:6,background:"rgba(26,22,20,0.06)"}}>
-                <div style={{height:6,width:`${n/maxBrand*100}%`,background:"#6D2E46"}}/>
-              </div>
-            </div>
-          )}
+        <div style={{border:`1px solid ${C.border}`,padding:20,height:320}}>
+          <canvas ref={brandRef}></canvas>
+        </div>
+      </div>
+
+      <div style={{fontSize:11,letterSpacing:4,color:C.gold,margin:"56px 0 8px"}}>SUIVI DES RETOURS<span className="api-badge">GET /returns/platform/stats</span></div>
+      <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:24,marginBottom:8}}>Ponctualité &amp; état des retours</h2>
+      <p style={{fontSize:13,color:C.muted,marginBottom:24}}>{returnsStats?`${returnsStats.total_retours} retours sur la période — ${returnsStats.a_temps} à temps, ${returnsStats.en_retard} en retard.`:"Chargement…"}</p>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,marginBottom:44}}>
+        <div>
+          <h3 style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,marginBottom:18}}>Retours à temps / en retard par mois</h3>
+          <div style={{border:`1px solid ${C.border}`,padding:20,height:280}}>
+            <canvas ref={returnsMonthlyRef}></canvas>
+          </div>
+        </div>
+        <div>
+          <h3 style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,marginBottom:18}}>Évolution de l'état de l'article</h3>
+          <div style={{border:`1px solid ${C.border}`,padding:20,height:280}}>
+            <canvas ref={returnsEvolutionRef}></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div style={{marginBottom:44}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:12}}>
+          <h3 style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,margin:0}}>Derniers retours</h3>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:11,color:C.muted}}>Lignes :</span>
+            {[10,20,50,100].map(n=>
+              <button key={n} onClick={()=>setDetailLimit(n)} style={{fontSize:11,padding:"6px 12px",border:`1px solid ${detailLimit===n?C.gold:C.border}`,background:detailLimit===n?C.gold:"transparent",color:detailLimit===n?C.ink:C.muted,cursor:"pointer",fontWeight:600}}>{n}</button>
+            )}
+          </div>
+        </div>
+        <div style={{border:`1px solid ${C.border}`,overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
+            <thead>
+              <tr style={{background:C.card,textAlign:"left"}}>
+                {["Article","Client","Date location","Durée","Retour prévu","Retour réel","Ponctualité","État location","État retour"].map(h=>
+                  <th key={h} style={{padding:"10px 14px",fontWeight:600,color:C.muted,letterSpacing:0.5,borderBottom:`1px solid ${C.border}`}}>{h}</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {returnsDetail.length===0?
+                <tr><td colSpan={9} style={{padding:20,textAlign:"center",color:C.muted}}>Aucun retour enregistré pour le moment.</td></tr>
+              :returnsDetail.map((r,i)=>
+                <tr key={i} style={{borderBottom:`1px solid ${C.border}`}}>
+                  <td style={{padding:"10px 14px"}}>{r.article}<div style={{fontSize:10,color:C.muted}}>{r.marque}</div></td>
+                  <td style={{padding:"10px 14px"}}>{r.client}</td>
+                  <td style={{padding:"10px 14px"}}>{new Date(r.date_location).toLocaleDateString("fr-FR")}</td>
+                  <td style={{padding:"10px 14px"}}>{r.duree_jours} j</td>
+                  <td style={{padding:"10px 14px"}}>{new Date(r.retour_prevu).toLocaleDateString("fr-FR")}</td>
+                  <td style={{padding:"10px 14px"}}>{r.retour_reel?new Date(r.retour_reel).toLocaleDateString("fr-FR"):"—"}</td>
+                  <td style={{padding:"10px 14px"}}>
+                    <span style={{padding:"3px 8px",fontSize:10,letterSpacing:0.5,border:"1px solid",borderColor:r.a_temps?"rgba(93,202,165,0.4)":"rgba(224,133,133,0.4)",color:r.a_temps?"#2D6A4F":"#B23A3A"}}>{r.a_temps?"À TEMPS":"EN RETARD"}</span>
+                  </td>
+                  <td style={{padding:"10px 14px"}}>{r.etat_location||"—"}</td>
+                  <td style={{padding:"10px 14px"}}>{r.etat_retour||"—"}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1639,7 +1761,7 @@ function App(){
     {screen===SCREENS.RENTER_PAYMENT&&<RenterPayment setScreen={setScreen} article={selectedArticle} txData={txData} showToast={showToast}/>}
     {screen===SCREENS.RENTER_PROFILE&&<RenterProfile setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_RETURN&&<RenterReturn setScreen={setScreen} showToast={showToast}/>}
-    {screen===SCREENS.STATS&&(user&&user.role==="admin"?<StatsScreen/>:<div style={{minHeight:"calc(100vh - 64px)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(26,22,20,0.4)",fontSize:14}}>Accès réservé aux administrateurs.</div>)}
+    {screen===SCREENS.STATS&&(user&&user.role==="admin"?<StatsScreen showToast={showToast}/>:<div style={{minHeight:"calc(100vh - 64px)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(26,22,20,0.4)",fontSize:14}}>Accès réservé aux administrateurs.</div>)}
     {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
   </div>
 }
