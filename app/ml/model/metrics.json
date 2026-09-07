@@ -64,5 +64,55 @@
       "feature": "brightness",
       "importance": 0.0461
     }
+  ],
+  "comparaison_modeles": [
+    {
+      "nom": "Random Forest",
+      "accuracy": 0.8583,
+      "precision": 0.8028,
+      "recall": 0.95,
+      "f1_score": 0.8702,
+      "auc": 0.8972
+    },
+    {
+      "nom": "SVM (noyau RBF)",
+      "accuracy": 0.8167,
+      "precision": 0.7317,
+      "recall": 1.0,
+      "f1_score": 0.8451,
+      "auc": 0.8275
+    },
+    {
+      "nom": "Régression logistique",
+      "accuracy": 0.8,
+      "precision": 0.7368,
+      "recall": 0.9333,
+      "f1_score": 0.8235,
+      "auc": 0.8561
+    },
+    {
+      "nom": "Gradient Boosting",
+      "accuracy": 0.8,
+      "precision": 0.7647,
+      "recall": 0.8667,
+      "f1_score": 0.8125,
+      "auc": 0.8858
+    },
+    {
+      "nom": "Réseau de neurones (MLP)",
+      "accuracy": 0.7833,
+      "precision": 0.75,
+      "recall": 0.85,
+      "f1_score": 0.7969,
+      "auc": 0.8853
+    },
+    {
+      "nom": "Référence naïve",
+      "accuracy": 0.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "auc": 0.5
+    }
   ]
 }
