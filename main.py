@@ -41,11 +41,14 @@ if engine.dialect.name == "postgresql":
     with engine.connect() as _conn:
         _conn = _conn.execution_options(isolation_level="AUTOCOMMIT")
         for _value in UserRole:
+            # SQLAlchemy persiste le NOM du membre de l'enum Python (ex.
+            # "ADMIN"), pas sa valeur (ex. "admin") — c'est bien .name qu'il
+            # faut ajouter au type Postgres, pas .value.
             try:
                 _conn.execute(text(
-                    f"ALTER TYPE userrole ADD VALUE IF NOT EXISTS '{_value.value}'"))
+                    f"ALTER TYPE userrole ADD VALUE IF NOT EXISTS '{_value.name}'"))
             except Exception as _e:
-                print(f"[migration] userrole '{_value.value}' : {_e}")
+                print(f"[migration] userrole '{_value.name}' : {_e}")
 
 
 # ════════════════════════════════════════════════════════════════════
