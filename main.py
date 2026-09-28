@@ -83,6 +83,28 @@ _ensure_column("users", "is_active", "BOOLEAN DEFAULT TRUE")
 _ensure_column("articles", "is_archived", "BOOLEAN DEFAULT FALSE")
 _ensure_column("articles", "archived_at", "TIMESTAMP")
 
+# Vérification finale : si une colonne attendue manque encore ici (ALTER
+# TABLE refusé par le moteur, droits insuffisants, etc.), on arrête le
+# démarrage plutôt que de laisser l'API tourner avec un schéma incomplet
+# — l'erreur serait sinon invisible jusqu'au premier appel touchant la
+# colonne manquante (typiquement un onglet de la console admin).
+_REQUIRED_COLUMNS = {
+    "users": ["is_active"],
+    "articles": ["is_archived", "archived_at"],
+}
+_missing = []
+for _table, _columns in _REQUIRED_COLUMNS.items():
+    _existing = {c["name"] for c in inspect(engine).get_columns(_table)}
+    for _column in _columns:
+        if _column not in _existing:
+            _missing.append(f"{_table}.{_column}")
+if _missing:
+    raise RuntimeError(
+        "Migration de schéma incomplète, colonne(s) manquante(s) : "
+        + ", ".join(_missing)
+        + ". Démarrage interrompu."
+    )
+
 
 # ════════════════════════════════════════════════════════════════════
 # CHEMINS ABSOLUS — indépendants du répertoire courant du process
@@ -411,6 +433,35 @@ def serve_frontend():
 @app.get("/health", tags=["Root"])
 def health():
     return {"status": "healthy"}
+
+
+@app.get("/api/v1/health", tags=["Root"])
+def health_schema():
+    """
+    État réel du schéma en base, vérifiable depuis le navigateur à tout
+    moment (sans dépendre des logs du premier démarrage) : présence des
+    colonnes ajoutées par la migration et de la table admin_actions.
+    """
+    insp = inspect(engine)
+    users_columns = {c["name"] for c in insp.get_columns("users")}
+    articles_columns = {c["name"] for c in insp.get_columns("articles")}
+    table_names = set(insp.get_table_names())
+    schema_ok = (
+        "is_active" in users_columns
+        and "is_archived" in articles_columns
+        and "archived_at" in articles_columns
+        and "admin_actions" in table_names
+    )
+    return {
+        "status": "ok" if schema_ok else "schema_incomplet",
+        "moteur": engine.dialect.name,
+        "schema": {
+            "users.is_active": "is_active" in users_columns,
+            "articles.is_archived": "is_archived" in articles_columns,
+            "articles.archived_at": "archived_at" in articles_columns,
+            "table_admin_actions": "admin_actions" in table_names,
+        },
+    }
 
 
 @app.get("/api/v1/debug/photos", tags=["Root"])
