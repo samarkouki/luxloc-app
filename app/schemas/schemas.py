@@ -46,6 +46,13 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class PasswordForgotRequest(BaseModel):
+    email: str
+
+class PasswordResetRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
 class UserAdminUpdate(BaseModel):
     """Modification d'un compte par un administrateur — tous les champs optionnels."""
     role: Optional[str] = None

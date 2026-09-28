@@ -210,3 +210,19 @@ class AdminAction(Base):
     cible_id = Column(Integer, nullable=True)
     detail = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PasswordResetToken(Base):
+    """
+    Lien de réinitialisation de mot de passe envoyé par e-mail. On ne stocke
+    que l'empreinte SHA-256 du jeton : une fuite de la base ne permet pas de
+    réutiliser un lien. Usage unique, valable 30 minutes.
+    """
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token_hash = Column(String, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

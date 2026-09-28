@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
+import uuid
 from app.database import get_db
 from app.schemas.schemas import TransactionCreate, TransactionResponse, TransactionAdminUpdate
 from app.models.models import Article, Transaction, TransactionStatus, Verification, VerificationStatus, User
@@ -61,8 +62,33 @@ def create_transaction(tx: TransactionCreate, renter_id: int, db: Session = Depe
             "total": round(total, 2),
             "guarantee_blocked": transaction.guarantee_amount,
         },
-        "message": "Réservation confirmée. Le paiement sera prélevé à la confirmation du propriétaire."
+        "message": "Réservation enregistrée. Il reste à régler le paiement."
     }
+
+
+@router.post("/{transaction_id}/pay")
+def pay_transaction(transaction_id: int, renter_id: int, db: Session = Depends(get_db)):
+    """
+    Paiement de DÉMONSTRATION : aucun prestataire de paiement n'est branché,
+    aucune carte n'est débitée et le numéro de carte n'est jamais transmis
+    au serveur. On enregistre seulement une référence de paiement fictive
+    (préfixe « demo_ ») pour que la réservation porte la trace du paiement.
+    Le champ stripe_payment_id est réutilisé pour stocker cette référence ;
+    il accueillera l'identifiant Stripe réel le jour où le paiement sera branché.
+    """
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Réservation introuvable")
+    if tx.renter_id != renter_id:
+        raise HTTPException(status_code=403, detail="Cette réservation appartient à un autre compte")
+    if tx.status not in (TransactionStatus.PENDING, TransactionStatus.CONFIRMED):
+        raise HTTPException(status_code=400, detail="Cette réservation ne peut plus être payée")
+    if tx.stripe_payment_id:
+        return {"transaction_id": tx.id, "reference": tx.stripe_payment_id, "deja_paye": True}
+
+    tx.stripe_payment_id = "demo_" + uuid.uuid4().hex[:12]
+    db.commit()
+    return {"transaction_id": tx.id, "reference": tx.stripe_payment_id, "deja_paye": False}
 
 
 @router.get("/{transaction_id}")

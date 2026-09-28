@@ -14,6 +14,7 @@ from app.database import engine, Base, SessionLocal
 from app.models.models import *
 from app.ml import authenticator as efficientnet
 from app.ml import predict as rf_predict
+from app.services import email as mailer
 import os
 import hashlib
 import base64
@@ -486,6 +487,7 @@ def health_schema():
             "efficientnet_erreur_chargement": efficientnet.load_error(),
             "random_forest_disponible": rf_predict.is_model_available(),
         },
+        "email_reinitialisation_configure": mailer.is_configured(),
     }
 
 
