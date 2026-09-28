@@ -49,11 +49,11 @@ import time
 
 MODEL_VERSION = "EfficientNet-B0-v1"
 
-# Durée d'inactivité avant libération du modèle. 10 minutes : assez long
-# pour ne jamais se déclencher pendant une session de démonstration ou un
-# usage normal, assez court pour rendre la mémoire au process en dehors
-# des heures d'utilisation.
-IDLE_UNLOAD_SECONDS = 600
+# Durée d'inactivité avant libération du modèle. 30 minutes : pour une
+# démonstration, mieux vaut garder le modèle chaud (voir la limite mesurée
+# plus haut — la libération ne fait de toute façon pas redescendre la
+# mémoire observée) qu'imposer un rechargement à la moindre pause.
+IDLE_UNLOAD_SECONDS = 1800
 
 _APP_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _AUTHENTICATOR_DIR = os.path.join(_APP_ROOT, "luxury_authenticator_v1")
