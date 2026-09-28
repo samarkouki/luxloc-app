@@ -360,33 +360,48 @@ def relaunch_verification(article_id: int, admin: User = Depends(require_admin),
 @router.get("/model/info")
 def get_model_info():
     """
-    Renvoie la fiche du modèle ML de détection de contrefaçon :
-    métriques d'évaluation, features utilisées, importance des features.
-    Utile pour la transparence et la présentation du modèle.
+    Fiche du modèle produisant le score d'authenticité de l'étape 2 —
+    EfficientNet-B0, qui a remplacé le Random Forest (voir MODELES.md pour
+    la comparaison complète). Lit metrics.json sans jamais déclencher le
+    chargement du modèle lui-même : cette fiche reste consultable même
+    avant la première vérification.
     """
-    info = ml_predict.model_info()
+    info = efficientnet.model_info()
     if not info:
         return {
             "model_disponible": False,
-            "message": "Modèle non entraîné — exécuter : python -m app.ml.train",
+            "message": "Fiche modèle indisponible — metrics.json absent de luxury_authenticator_v1/models/.",
         }
+
+    cm = info["confusion_matrix"]["matrix"]  # [[fake→fake, fake→real], [real→fake, real→real]]
     return {
         "model_disponible": True,
-        "modele": info["model"],
+        "architecture": "EfficientNet-B0 (fine-tuné)",
+        "version": efficientnet.MODEL_VERSION,
         "jeu_de_donnees": {
-            "taille_totale": info["dataset_size"],
-            "entrainement": info["train_size"],
-            "test": info["test_size"],
+            "taille_test": info["test_images"],
         },
         "metriques": {
             "accuracy": info["accuracy"],
             "precision": info["precision"],
             "recall": info["recall"],
             "f1_score": info["f1_score"],
-            "f1_validation_croisee": f"{info['cv_f1_mean']} (+/- {info['cv_f1_std']})",
+            "roc_auc": info["roc_auc"],
         },
-        "matrice_confusion": info["confusion_matrix"],
-        "importance_features": info["feature_importances"],
+        "matrice_confusion": {
+            "contrefacons_detectees": cm[0][0],
+            "contrefacons_classees_authentiques": cm[0][1],
+            "authentiques_rejetes_a_tort": cm[1][0],
+            "authentiques_valides": cm[1][1],
+        },
+        # Comparaison déjà réalisée sur le même jeu de test réel (235 images) —
+        # voir MODELES.md pour la méthode complète et les limites. Le chiffre
+        # du Random Forest n'est pas recalculé ici, ce modèle n'étant plus en
+        # service pour ce score.
+        "comparaison_ancien_modele": {
+            "random_forest_roc_auc": 0.534,
+            "efficientnet_roc_auc": round(info["roc_auc"], 4),
+        },
     }
 
 

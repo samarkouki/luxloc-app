@@ -1353,27 +1353,27 @@ function ModelIA(){
 
   if(err) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Impossible de charger la fiche du modèle.</div>;
   if(!info) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Chargement de la fiche modèle…</div>;
-  if(!info.model_disponible) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Modèle non entraîné. Exécuter : python -m app.ml.train</div>;
+  if(!info.model_disponible) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Fiche modèle indisponible pour le moment.</div>;
 
-  const m=info.metriques, cm=info.matrice_confusion;
+  const m=info.metriques, cm=info.matrice_confusion, comp=info.comparaison_ancien_modele;
   const pct=v=>(v*100).toFixed(1)+" %";
   const metricCards=[
     {l:"Accuracy",v:pct(m.accuracy)},
-    {l:"Precision",v:pct(m.precision)},
-    {l:"Recall",v:pct(m.recall)},
+    {l:"Précision",v:pct(m.precision)},
+    {l:"Rappel",v:pct(m.recall)},
     {l:"F1-score",v:pct(m.f1_score)},
+    {l:"ROC-AUC",v:m.roc_auc.toFixed(3)},
   ];
-  const maxImp=Math.max(...info.importance_features.map(f=>f.importance));
 
   return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px clamp(16px,4vw,24px)"}}>
-    <div style={{display:"flex",alignItems:"baseline",gap:14,marginBottom:6}}>
+    <div style={{display:"flex",alignItems:"baseline",gap:14,marginBottom:6,flexWrap:"wrap"}}>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:30,color:C.cream,margin:0}}>Modèle de détection de contrefaçon</h1>
-      <span style={{fontSize:11,letterSpacing:1,padding:"3px 12px",background:"rgba(201,168,76,0.12)",color:C.gold,border:`1px solid rgba(201,168,76,0.3)`}}>RANDOM FOREST v1</span>
+      <span style={{fontSize:11,letterSpacing:1,padding:"3px 12px",background:"rgba(201,168,76,0.12)",color:C.gold,border:`1px solid rgba(201,168,76,0.3)`}}>{info.architecture.toUpperCase()}</span>
     </div>
-    <p style={{color:C.muted,fontSize:13,marginBottom:32}}>{info.modele} · {info.jeu_de_donnees.taille_totale} échantillons ({info.jeu_de_donnees.entrainement} entraînement / {info.jeu_de_donnees.test} test) · 9 features d'image</p>
+    <p style={{color:C.muted,fontSize:13,marginBottom:32}}>{info.architecture} · jeu de test réel de {info.jeu_de_donnees.taille_test} images annotées authentique / contrefait</p>
 
     {/* Métriques */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:14,marginBottom:36}}>
       {metricCards.map(c=>
         <div key={c.l} style={{padding:"20px",background:C.card,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,letterSpacing:1,color:C.muted,marginBottom:8}}>{c.l.toUpperCase()}</div>
@@ -1381,58 +1381,60 @@ function ModelIA(){
         </div>
       )}
     </div>
-    <p style={{color:C.muted,fontSize:12,marginBottom:36}}>Validation croisée 5-fold — F1 : <span style={{color:C.cream}}>{m.f1_validation_croisee}</span></p>
 
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:36}}>
       {/* Matrice de confusion */}
       <div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Matrice de confusion</h2>
-        <div style={{display:"grid",gridTemplateColumns:"70px 1fr 1fr",gap:6,fontSize:11}}>
-          <div></div>
-          <div style={{textAlign:"center",color:C.muted,paddingBottom:4}}>Prédit faux</div>
-          <div style={{textAlign:"center",color:C.muted,paddingBottom:4}}>Prédit vrai</div>
-          <div style={{display:"flex",alignItems:"center",color:C.muted}}>Réel faux</div>
-          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#5DCAA5",fontWeight:600}}>{cm.vrais_negatifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>contrefaçons détectées</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#5DCAA5",fontWeight:600}}>{cm.contrefacons_detectees}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>contrefaçons correctement détectées</div>
           </div>
-          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#E08585",fontWeight:600}}>{cm.faux_positifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>super fakes manqués</div>
+          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#E08585",fontWeight:600}}>{cm.contrefacons_classees_authentiques}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>contrefaçons classées à tort comme authentiques</div>
           </div>
-          <div style={{display:"flex",alignItems:"center",color:C.muted}}>Réel vrai</div>
-          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#E08585",fontWeight:600}}>{cm.faux_negatifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>vrais rejetés à tort</div>
+          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#E08585",fontWeight:600}}>{cm.authentiques_rejetes_a_tort}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>authentiques rejetés à tort</div>
           </div>
-          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#5DCAA5",fontWeight:600}}>{cm.vrais_positifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>authentiques validés</div>
+          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#5DCAA5",fontWeight:600}}>{cm.authentiques_valides}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>authentiques validés</div>
           </div>
         </div>
       </div>
-      {/* Importance des features */}
+      {/* Comparaison avec le modèle précédent */}
       <div>
-        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Importance des features</h2>
-        <div style={{display:"flex",flexDirection:"column",gap:9}}>
-          {info.importance_features.map(f=>
-            <div key={f.feature}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.cream,marginBottom:3}}>
-                <span>{f.feature}</span><span style={{color:C.muted}}>{(f.importance*100).toFixed(1)} %</span>
-              </div>
-              <div style={{height:8,background:"rgba(26,22,20,0.06)"}}>
-                <div style={{height:8,width:`${(f.importance/maxImp*100).toFixed(0)}%`,background:C.gold}}></div>
-              </div>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Comparaison avec le modèle précédent</h2>
+        <p style={{fontSize:12,color:C.muted,marginBottom:16}}>Mesurée sur le même jeu de test réel de {info.jeu_de_donnees.taille_test} images.</p>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted,marginBottom:4}}>
+              <span>Ancien modèle — ROC-AUC</span><span>{comp.random_forest_roc_auc.toFixed(3)}</span>
             </div>
-          )}
+            <div style={{height:10,background:"rgba(26,22,20,0.06)"}}>
+              <div style={{height:10,width:`${(comp.random_forest_roc_auc*100).toFixed(0)}%`,background:"rgba(26,22,20,0.25)"}}></div>
+            </div>
+          </div>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.cream,marginBottom:4}}>
+              <span>{info.architecture} — ROC-AUC</span><span style={{color:C.gold,fontWeight:600}}>{comp.efficientnet_roc_auc.toFixed(3)}</span>
+            </div>
+            <div style={{height:10,background:"rgba(26,22,20,0.06)"}}>
+              <div style={{height:10,width:`${(comp.efficientnet_roc_auc*100).toFixed(0)}%`,background:C.gold}}></div>
+            </div>
+          </div>
         </div>
+        <p style={{fontSize:12,color:"#5DCAA5",marginTop:16}}>Amélioration mesurée : +{(comp.efficientnet_roc_auc-comp.random_forest_roc_auc).toFixed(3)} de ROC-AUC sur données réelles.</p>
       </div>
     </div>
 
     <div style={{marginTop:40,padding:"20px 24px",background:"rgba(201,168,76,0.04)",border:`1px solid rgba(201,168,76,0.15)`}}>
       <div style={{fontSize:11,letterSpacing:1,color:C.gold,marginBottom:8}}>NOTE MÉTHODOLOGIQUE</div>
       <p style={{fontSize:12,color:C.muted,lineHeight:1.6,margin:0}}>
-        Le modèle est intégré à l'étape 2 du pipeline de vérification. Pour ce prototype, il est entraîné sur un jeu de données généré simulant les signatures visuelles authentique / contrefaçon ; les features sont extraites de pixels réels. Le pipeline (extraction, entraînement, évaluation, déploiement) est prêt à réentraîner sur un dataset réel.
+        Ce résultat est une aide à la décision, pas une certification d'authenticité. Le jeu d'entraînement est majoritairement composé de prêt-à-porter et de sneakers, avec une part limitée de maroquinerie de luxe et aucune montre ni bijou — l'extension à ces catégories demandera un jeu de données spécialisé. La zone d'incertitude du score global (entre 0,40 et 0,84) est systématiquement arbitrée par un expert humain, jamais tranchée automatiquement.
       </p>
     </div>
   </div>;
@@ -1987,6 +1989,7 @@ function App(){
     {screen===SCREENS.RENTER_PAYMENT&&<RenterPayment setScreen={setScreen} article={selectedArticle} txData={txData} showToast={showToast}/>}
     {screen===SCREENS.RENTER_PROFILE&&<RenterProfile setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_RETURN&&<RenterReturn setScreen={setScreen} showToast={showToast}/>}
+    {screen===SCREENS.MODEL_IA&&<ModelIA/>}
     {screen===SCREENS.STATS&&(user&&user.role==="admin"?<StatsScreen/>:<div style={{minHeight:"calc(100vh - 64px)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(26,22,20,0.4)",fontSize:14}}>Accès réservé aux administrateurs.</div>)}
     {screen===SCREENS.ADMIN_CONSOLE&&(user&&user.role==="admin"?<AdminConsole user={user} showToast={showToast} onChange={()=>refreshModerationCount(user)}/>:<div style={{minHeight:"calc(100vh - 64px)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(26,22,20,0.4)",fontSize:14}}>Accès réservé aux administrateurs.</div>)}
     {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
