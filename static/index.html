@@ -421,8 +421,12 @@ function Landing({setScreen,articles,stats}){
   useEffect(()=>{setTimeout(()=>setLoaded(true),100)},[]);
 
   // Pièces choisies pour l'empilement du hero
+  // On ne met en avant que des pièces réellement authentifiées : la carte
+  // affiche « VÉRIFIÉ » et le badge reprend leur vrai score.
   const withPhoto = (articles||[]).filter(a=>a.photo);
-  const feat = (withPhoto.length>=2 ? withPhoto : (articles||[])).slice(0,3);
+  const verifiedWithPhoto = withPhoto.filter(a=>a.verification_status==="verified");
+  const feat = (verifiedWithPhoto.length>=2 ? verifiedWithPhoto : withPhoto.length>=2 ? withPhoto : (articles||[])).slice(0,3);
+  const heroScore = feat[1]?.verification_score;
   const featuredGrid = (articles||[]).slice(0,4);
 
   const fadeIn = (delay=0) => ({
@@ -469,9 +473,11 @@ function Landing({setScreen,articles,stats}){
         <div style={{position:"relative",height:"clamp(440px,52vh,600px)",transform:`translateY(${-scrollY*0.12}px)`,willChange:"transform",...fadeIn(0.25)}}>
         <div ref={tiltRef} style={{position:"absolute",inset:0,transition:"transform .4s cubic-bezier(0.2,0.8,0.2,1)"}}>
 
-          {/* Carte arriere (decorative) */}
-          <div style={{position:"absolute",top:30,left:"6%",width:"56%",height:"68%",background:"linear-gradient(155deg,#6D2E46 0%,#1A1614 100%)",transform:"rotate(-5deg)",boxShadow:"0 22px 60px rgba(26,22,20,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(80px,11vw,160px)",color:"rgba(201,168,76,0.16)",fontWeight:200}}>{feat[0]?.brand?.[0]||"H"}</span>
+          {/* Carte arrière — deuxième pièce de la collection */}
+          <div style={{position:"absolute",top:30,left:"6%",width:"56%",height:"68%",background:"#FFFFFF",padding:10,transform:"rotate(-5deg)",boxShadow:"0 22px 60px rgba(26,22,20,0.18)",border:"1px solid rgba(26,22,20,0.04)"}}>
+            <div style={{position:"relative",width:"100%",height:"100%",background:feat[0]?.photo?`url(${feat[0].photo}) center/cover`:"linear-gradient(155deg,#6D2E46 0%,#1A1614 100%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {!feat[0]?.photo&&<span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(80px,11vw,160px)",color:"rgba(201,168,76,0.16)",fontWeight:200}}>{feat[0]?.brand?.[0]||"H"}</span>}
+            </div>
           </div>
 
           {/* Carte milieu — produit principal */}
@@ -484,20 +490,20 @@ function Landing({setScreen,articles,stats}){
               <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,marginBottom:8}}>{feat[1]?.title||"Speedy 25"}</div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
                 <span style={{fontSize:13,color:"rgba(26,22,20,0.5)"}}>{feat[1]?.price_per_day||85}€ / jour</span>
-                <span style={{fontSize:10,letterSpacing:1.5,color:"#1f5a3d",fontWeight:600}}>● VÉRIFIÉ</span>
+                {feat[1]?.verification_status==="verified"&&<span style={{fontSize:10,letterSpacing:1.5,color:"#1f5a3d",fontWeight:600}}>● VÉRIFIÉ</span>}
               </div>
             </div>
           </div>
 
-          {/* Badge IA flottant */}
-          <div style={{position:"absolute",bottom:"4%",right:"2%",padding:"18px 24px",background:"#1A1614",color:"#FAF8F4",boxShadow:"0 14px 44px rgba(26,22,20,0.32)",animation:"float 5s ease-in-out infinite"}}>
+          {/* Badge IA flottant — score réel de la pièce du milieu */}
+          {heroScore!=null&&feat[1]?.verification_status==="verified"&&<div style={{position:"absolute",bottom:"4%",right:"2%",padding:"18px 24px",background:"#1A1614",color:"#FAF8F4",boxShadow:"0 14px 44px rgba(26,22,20,0.32)",animation:"float 5s ease-in-out infinite"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:"#5DCAA5",boxShadow:"0 0 14px rgba(93,202,165,0.8)"}}/>
               <div style={{fontSize:9,letterSpacing:2.5,color:"#C9A84C",fontWeight:600}}>VÉRIFIÉ IA</div>
             </div>
-            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:600,letterSpacing:"-0.02em"}}>0.96</div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:600,letterSpacing:"-0.02em"}}>{heroScore.toFixed(2)}</div>
             <div style={{fontSize:10,color:"rgba(245,240,235,0.55)",marginTop:2,letterSpacing:0.5}}>score d'authenticité</div>
-          </div>
+          </div>}
         </div>
         </div>
       </div>
@@ -505,7 +511,7 @@ function Landing({setScreen,articles,stats}){
       {/* Stats sous le hero — chiffres animés au défilement */}
       <div style={{maxWidth:1380,margin:"clamp(60px,8vw,100px) auto 0",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:0,borderTop:"1px solid rgba(26,22,20,0.1)",paddingTop:36,...fadeIn(0.5)}}>
         {[
-          {render:<><Counter value={stats?.total_articles||0}/></>, l:"PIÈCES CERTIFIÉES"},
+          {render:<><Counter value={stats?.verification?.verifies||0}/></>, l:"PIÈCES CERTIFIÉES"},
           {render:<><Counter value={stats?.verification?.taux_auto_validation||0} decimals={1} suffix="%"/></>, l:"AUTHENTIFICATION AUTOMATIQUE"},
           {render:<><Counter value={stats?.score_ia_moyen||0} decimals={2}/></>, l:"SCORE IA MOYEN"}
         ].map((s,i)=>
@@ -1457,19 +1463,26 @@ function StatsScreen(){
 
   const bigCards=[
     {l:"Articles au catalogue",v:stats.total_articles,c:C.gold},
-    {l:"Taux d'auto-validation IA",v:v.taux_auto_validation+" %",c:C.green},
-    {l:"Score IA moyen",v:stats.score_ia_moyen,c:C.gold},
-    {l:"Valeur du catalogue",v:(stats.valeur_catalogue/1000).toFixed(1)+" k€",c:C.gold},
+    {l:"Pièces certifiées",v:v.verifies,c:C.green},
+    {l:"Score d'authenticité moyen",v:stats.score_ia_moyen.toFixed(2),c:C.gold},
+    {l:"Valeur neuve du catalogue",v:(stats.valeur_catalogue/1000).toFixed(1)+" k€",c:C.gold},
   ];
+  const statusRows=[
+    {l:"Validés automatiquement par l'IA",n:v.verifies_auto??v.verifies,col:"#5DCAA5"},
+    {l:"Validés par un expert",n:v.verifies_expert??0,col:"#2D6A4F"},
+    {l:"En attente d'examen expert",n:v.en_examen,col:"#EF9F27"},
+    {l:"Rejetés",n:v.rejetes,col:"#E08585"},
+  ];
+  const totStatus=statusRows.reduce((s,r)=>s+r.n,0)||1;
 
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:C.ink}}>
     <div style={{maxWidth:1100,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{fontSize:11,letterSpacing:4,color:C.gold,marginBottom:8}}>SUPERVISION DE LA PLATEFORME</div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:8}}>Statistiques</h1>
-      <p style={{fontSize:13,color:C.muted,marginBottom:36}}>Vue d'ensemble en temps réel — données agrégées depuis l'API LUXLOC.</p>
+      <p style={{fontSize:13,color:C.muted,marginBottom:36}}>Chiffres à jour de la plateforme. Les articles supprimés ne sont pas comptés, et chaque article compte pour sa dernière analyse.</p>
 
       {/* Grandes cartes */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:36}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:36}}>
         {bigCards.map((c,i)=>
           <div key={i} style={{padding:"24px 20px",background:C.card,border:`1px solid ${C.border}`}}>
             <div style={{fontSize:11,letterSpacing:1,color:C.muted,marginBottom:10}}>{c.l.toUpperCase()}</div>
@@ -1479,9 +1492,9 @@ function StatsScreen(){
       </div>
 
       {/* Ligne secondaire : petites stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:44}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14,marginBottom:44}}>
         {[
-          {l:"Utilisateurs inscrits",v:stats.total_utilisateurs},
+          {l:"Comptes actifs",v:stats.total_utilisateurs},
           {l:"Locations réalisées",v:stats.total_locations},
           {l:"Revenus de commission",v:stats.revenus_commission+" €"},
         ].map((c,i)=>
@@ -1492,25 +1505,22 @@ function StatsScreen(){
         )}
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:40}}>
         {/* Statut de vérification */}
         <div>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:18}}>Statut de vérification IA</h2>
-          {[
-            {l:"Vérifiés (auto)",n:v.verifies,col:"#5DCAA5"},
-            {l:"En examen expert",n:v.en_examen,col:"#EF9F27"},
-            {l:"Rejetés",n:v.rejetes,col:"#E08585"},
-          ].map((r,i)=>{
-            const tot=v.verifies+v.en_examen+v.rejetes||1;
-            return <div key={i} style={{marginBottom:16}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:5}}>
-                <span>{r.l}</span><span style={{color:C.muted}}>{r.n}</span>
-              </div>
-              <div style={{height:8,background:"rgba(26,22,20,0.06)"}}>
-                <div style={{height:8,width:`${r.n/tot*100}%`,background:r.col,transition:"width 1s ease-out"}}/>
-              </div>
-            </div>;
-          })}
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:6}}>Résultat des analyses</h2>
+          <p style={{fontSize:12,color:C.muted,marginBottom:18}}>{v.taux_auto_validation} % des pièces sont validées sans intervention humaine.</p>
+          <div style={{display:"flex",height:14,marginBottom:20,background:"rgba(26,22,20,0.06)"}}>
+            {statusRows.filter(r=>r.n>0).map((r,i)=><div key={i} title={`${r.l} : ${r.n}`} style={{width:`${r.n/totStatus*100}%`,background:r.col}}/>)}
+          </div>
+          {statusRows.map((r,i)=>
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,fontSize:13,marginBottom:10}}>
+              <span style={{width:10,height:10,background:r.col,flexShrink:0}}/>
+              <span style={{flex:1}}>{r.l}</span>
+              <span style={{color:C.muted,fontVariantNumeric:"tabular-nums"}}>{r.n}</span>
+            </div>
+          )}
+          {v.sans_analyse>0&&<p style={{fontSize:12,color:C.muted,marginTop:6}}>{v.sans_analyse} article{v.sans_analyse>1?"s":""} pas encore analysé{v.sans_analyse>1?"s":""}.</p>}
         </div>
 
         {/* Répartition par catégorie */}
@@ -1532,7 +1542,7 @@ function StatsScreen(){
       {/* Répartition par marque */}
       <div style={{marginTop:44}}>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:18}}>Maisons représentées</h2>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px 40px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:"12px 40px"}}>
           {Object.entries(stats.par_marque).map(([brand,n],i)=>
             <div key={i}>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}>

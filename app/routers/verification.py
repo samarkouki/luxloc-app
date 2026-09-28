@@ -289,6 +289,7 @@ def expert_validate(article_id: int, admin: User = Depends(require_admin),
                             detail="Article rejeté — non validable par expert")
 
     verif.status = VerificationStatus.VERIFIED
+    verif.reviewed_by = f"admin:{admin.id}"
     article.is_available = True
     log_admin_action(db, admin.id, "validate_article", "article", article.id,
                       f"« {article.title} » validé par un expert")
