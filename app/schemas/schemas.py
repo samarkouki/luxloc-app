@@ -35,6 +35,7 @@ class UserResponse(BaseModel):
     last_name: str
     role: str
     is_verified: bool
+    is_active: bool = True
     trust_score: float
     created_at: datetime
 
@@ -44,6 +45,11 @@ class UserResponse(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class UserAdminUpdate(BaseModel):
+    """Modification d'un compte par un administrateur — tous les champs optionnels."""
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 # ════════════════════════════════════
@@ -85,6 +91,16 @@ class ArticleFilter(BaseModel):
     max_price: Optional[float] = None
     verified_only: bool = True
 
+class ArticleUpdate(BaseModel):
+    """Modification d'un article par un administrateur — tous les champs optionnels."""
+    title: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    category: Optional[CategoryEnum] = None
+    price_per_day: Optional[float] = Field(default=None, gt=0)
+    condition: Optional[str] = None
+    is_available: Optional[bool] = None
+
 
 # ════════════════════════════════════
 # VÉRIFICATION
@@ -101,6 +117,9 @@ class VerificationScores(BaseModel):
     score_texture: float
     score_label: float
     score_rules: float
+
+class ExpertRejectRequest(BaseModel):
+    motif: str = Field(min_length=1, max_length=300)
 
 class VerificationResponse(BaseModel):
     id: int
@@ -140,6 +159,10 @@ class TransactionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TransactionAdminUpdate(BaseModel):
+    """Changement de statut d'une location par un administrateur."""
+    status: str
 
 class PriceEstimate(BaseModel):
     nb_days: int

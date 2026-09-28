@@ -8,8 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from sqlalchemy import text
-from app.routers import articles, users, verification, transactions, returns
+from sqlalchemy import text, inspect
+from app.routers import articles, users, verification, transactions, returns, admin
 from app.database import engine, Base, SessionLocal
 from app.models.models import *
 import os
@@ -49,6 +49,39 @@ if engine.dialect.name == "postgresql":
                     f"ALTER TYPE userrole ADD VALUE IF NOT EXISTS '{_value.name}'"))
             except Exception as _e:
                 print(f"[migration] userrole '{_value.name}' : {_e}")
+
+
+# ════════════════════════════════════════════════════════════════════
+# MIGRATION LÉGÈRE — nouvelles colonnes sur des tables existantes
+# ════════════════════════════════════════════════════════════════════
+# Même limitation que ci-dessus : Base.metadata.create_all() crée les
+# tables qui n'existent pas encore, mais ne modifie JAMAIS une table déjà
+# présente. Sur une base neuve, create_all a déjà créé ces colonnes et la
+# vérification ci-dessous est un no-op. Sur une base de production
+# existante (le cas Railway/Postgres), c'est cette étape qui les ajoute
+# réellement, sans jamais toucher aux données déjà en place.
+# On vérifie nous-mêmes la présence de la colonne plutôt que de compter
+# sur "ADD COLUMN IF NOT EXISTS" (absent des anciennes versions de
+# SQLite) : cette approche fonctionne à l'identique sur les deux moteurs.
+def _ensure_column(table, column, ddl_type):
+    try:
+        existing = {c["name"] for c in inspect(engine).get_columns(table)}
+    except Exception as _e:
+        print(f"[migration] impossible d'inspecter {table} : {_e}")
+        return
+    if column in existing:
+        return
+    try:
+        with engine.connect() as _conn:
+            _conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}"))
+            _conn.commit()
+        print(f"[migration] colonne ajoutée : {table}.{column}")
+    except Exception as _e:
+        print(f"[migration] échec ajout {table}.{column} : {_e}")
+
+_ensure_column("users", "is_active", "BOOLEAN DEFAULT TRUE")
+_ensure_column("articles", "is_archived", "BOOLEAN DEFAULT FALSE")
+_ensure_column("articles", "archived_at", "TIMESTAMP")
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -365,6 +398,7 @@ app.include_router(articles.router, prefix="/api/v1/articles", tags=["Articles"]
 app.include_router(verification.router, prefix="/api/v1/verification", tags=["Vérification IA"])
 app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
 app.include_router(returns.router, prefix="/api/v1/returns", tags=["Retours"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["Administration"])
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -485,9 +519,13 @@ def seed_demo_data():
                     image_data=overview_b64 if pt == "overview" else None,
                 ))
 
+        # Indices garantis en "review" (tous avail=True dans le seed ci-dessus)
+        # — la file de modération de la console admin ne doit jamais être
+        # vide pendant une démonstration.
+        REVIEW_INDICES = {2, 9, 15}
         for i, art in enumerate(articles_objects):
             if art.is_available:
-                en_examen = (i % 6 == 5)
+                en_examen = (i in REVIEW_INDICES)
                 if en_examen:
                     sg = round(random.uniform(0.62, 0.78), 4)
                     status = VerificationStatus.REVIEW

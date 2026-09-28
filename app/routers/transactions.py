@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.database import get_db
-from app.schemas.schemas import TransactionCreate, TransactionResponse
-from app.models.models import Article, Transaction, TransactionStatus, Verification, VerificationStatus
+from app.schemas.schemas import TransactionCreate, TransactionResponse, TransactionAdminUpdate
+from app.models.models import Article, Transaction, TransactionStatus, Verification, VerificationStatus, User
+from app.dependencies import require_admin, log_admin_action
 
 router = APIRouter()
 
@@ -126,3 +127,33 @@ def user_transactions(user_id: int, role: str = "renter", db: Session = Depends(
             "article_photo": overview.image_data if overview else None,
         })
     return result
+
+
+@router.patch("/{transaction_id}")
+def admin_update_transaction(transaction_id: int, payload: TransactionAdminUpdate,
+                              admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """
+    Change le statut d'une location (administration) : annuler ou clôturer
+    typiquement. Si la location est annulée ou clôturée, l'article
+    redevient disponible (sauf s'il a été archivé entre-temps).
+    """
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction non trouvée")
+    try:
+        new_status = TransactionStatus(payload.status)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Statut invalide")
+
+    old_status = tx.status
+    tx.status = new_status
+    if new_status in (TransactionStatus.CANCELLED, TransactionStatus.COMPLETED):
+        article = db.query(Article).filter(Article.id == tx.article_id).first()
+        if article and not article.is_archived:
+            article.is_available = True
+
+    log_admin_action(db, admin.id, "update_transaction", "transaction", tx.id,
+                      f"{old_status.value} → {new_status.value}")
+    db.commit()
+
+    return {"message": "Statut de la location mis à jour", "transaction_id": tx.id, "status": new_status.value}
