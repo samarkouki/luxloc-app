@@ -100,6 +100,39 @@ function AuthScreen({onLogin, showToast}) {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("renter");
   const [loading, setLoading] = useState(false);
+  // Lien reçu par e-mail : https://…/?reset=<jeton> ouvre directement le choix du nouveau mot de passe
+  const [resetToken] = useState(()=>new URLSearchParams(window.location.search).get("reset"));
+  const [forgotSent, setForgotSent] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [formError, setFormError] = useState("");
+  useEffect(()=>{ if(resetToken) setMode("reset"); },[resetToken]);
+
+  const handleForgot = async () => {
+    setLoading(true); setFormError("");
+    try { await api("/users/password/forgot", {method:"POST", body:{email}}); setForgotSent(true); }
+    catch(e) { setFormError(e.message); }
+    setLoading(false);
+  };
+
+  const handleReset = async () => {
+    if(newPassword.length<8) return setFormError("Le mot de passe doit contenir au moins 8 caractères.");
+    if(newPassword!==newPassword2) return setFormError("Les deux mots de passe ne sont pas identiques.");
+    setLoading(true); setFormError("");
+    try {
+      await api("/users/password/reset", {method:"POST", body:{token:resetToken, new_password:newPassword}});
+      window.history.replaceState(window.history.state,"",window.location.pathname);
+      showToast("✓ Mot de passe modifié, vous pouvez vous connecter");
+      setNewPassword(""); setNewPassword2(""); setPassword("");
+      setMode("login");
+    } catch(e) { setFormError(e.message); }
+    setLoading(false);
+  };
+
+  const goLogin = () => { setMode("login"); setForgotSent(false); setFormError(""); };
+  const inputStyle = {width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"};
+  const labelStyle = {fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6};
+  const linkStyle = {background:"none",border:"none",padding:0,cursor:"pointer",fontSize:12,color:"#8a6e26",textDecoration:"underline",textUnderlineOffset:3};
 
   const handleLogin = async () => {
     setLoading(true);
@@ -150,6 +183,32 @@ function AuthScreen({onLogin, showToast}) {
         </div>
       </div>
 
+      {(mode==="forgot"||mode==="reset")&&<div style={{display:"grid",gap:16}}>
+        <div>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600,marginBottom:6}}>{mode==="forgot"?"Mot de passe oublié":"Nouveau mot de passe"}</h2>
+          <p style={{fontSize:13,color:"rgba(26,22,20,0.55)",lineHeight:1.6}}>{mode==="forgot"
+            ?"Indiquez l'adresse e-mail de votre compte. Nous vous envoyons un lien pour choisir un nouveau mot de passe."
+            :"Choisissez un nouveau mot de passe d'au moins 8 caractères."}</p>
+        </div>
+
+        {mode==="forgot"&&(forgotSent
+          ? <div role="status" style={{fontSize:13,lineHeight:1.6,padding:"14px 16px",background:"rgba(45,106,79,0.08)",border:"1px solid rgba(45,106,79,0.25)",color:"#1f5a3d"}}>Si un compte existe avec l'adresse {email}, un e-mail vient de partir. Le lien est valable 30 minutes. Pensez à regarder dans les courriers indésirables.</div>
+          : <>
+            <div><label htmlFor="forgot-email" style={labelStyle}>Email</label><input id="forgot-email" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="sophie@luxloc.fr" style={inputStyle}/></div>
+            <button onClick={handleForgot} disabled={loading||!email} style={{padding:"14px 0",border:"none",background:email?"#C9A84C":"rgba(26,22,20,0.08)",color:email?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email?"pointer":"default"}}>{loading?"Envoi…":"ENVOYER LE LIEN"}</button>
+          </>)}
+
+        {mode==="reset"&&<>
+          <div><label htmlFor="reset-pw" style={labelStyle}>Nouveau mot de passe</label><input id="reset-pw" value={newPassword} onChange={e=>setNewPassword(e.target.value)} type="password" autoComplete="new-password" style={inputStyle}/></div>
+          <div><label htmlFor="reset-pw2" style={labelStyle}>Confirmer le mot de passe</label><input id="reset-pw2" value={newPassword2} onChange={e=>setNewPassword2(e.target.value)} type="password" autoComplete="new-password" style={inputStyle}/></div>
+          <button onClick={handleReset} disabled={loading||!newPassword||!newPassword2} style={{padding:"14px 0",border:"none",background:newPassword&&newPassword2?"#C9A84C":"rgba(26,22,20,0.08)",color:newPassword&&newPassword2?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:newPassword&&newPassword2?"pointer":"default"}}>{loading?"Enregistrement…":"ENREGISTRER LE MOT DE PASSE"}</button>
+        </>}
+
+        {formError&&<div role="alert" style={{fontSize:13,color:"#A33A34",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",padding:"10px 14px"}}>{formError}</div>}
+        <div style={{textAlign:"center"}}><button onClick={goLogin} style={linkStyle}>Retour à la connexion</button></div>
+      </div>}
+
+      {(mode==="login"||mode==="register")&&<>
       {/* Tabs */}
       <div style={{display:"flex",marginBottom:32,borderBottom:"1px solid rgba(26,22,20,0.08)"}}>
         {["login","register"].map(m=>
@@ -182,7 +241,9 @@ function AuthScreen({onLogin, showToast}) {
 
         <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Email</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="sophie@luxloc.fr" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
 
-        <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Mot de passe</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
+        <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Mot de passe</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/>
+          {mode==="login"&&<div style={{textAlign:"right",marginTop:8}}><button onClick={()=>{setMode("forgot");setFormError("");}} style={linkStyle}>Mot de passe oublié ?</button></div>}
+        </div>
 
         <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading||!email||!password} style={{padding:"14px 0",border:"none",background:email&&password?"#C9A84C":"rgba(26,22,20,0.08)",color:email&&password?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email&&password?"pointer":"default",marginTop:8}}>{loading?"Chargement...":(mode==="login"?"SE CONNECTER":"CRÉER MON COMPTE")}</button>
 
@@ -198,6 +259,7 @@ function AuthScreen({onLogin, showToast}) {
 
         <p style={{fontSize:10,color:"rgba(26,22,20,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.</p>
       </div>
+      </>}
     </div>
   </div>
 }
@@ -988,7 +1050,13 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
 
 // ═══ RENTER DETAIL ═══
 function RenterDetail({setScreen,article,showToast,user,setTxData}){
-  const [dates,setDates]=useState({start:"2026-04-05",end:"2026-04-08"});
+  // Dates proposées par défaut : de demain à dans 4 jours (jamais dans le passé)
+  const [dates,setDates]=useState(()=>{
+    const iso=d=>d.toISOString().slice(0,10);
+    const debut=new Date(); debut.setDate(debut.getDate()+1);
+    const fin=new Date(debut); fin.setDate(fin.getDate()+3);
+    return {start:iso(debut),end:iso(fin)};
+  });
   const [estimate,setEstimate]=useState(null);
   const days=Math.max(1,Math.round((new Date(dates.end)-new Date(dates.start))/(1000*60*60*24)));
 
