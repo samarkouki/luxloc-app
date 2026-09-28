@@ -12,6 +12,8 @@ from sqlalchemy import text, inspect
 from app.routers import articles, users, verification, transactions, returns, admin
 from app.database import engine, Base, SessionLocal
 from app.models.models import *
+from app.ml import authenticator as efficientnet
+from app.ml import predict as rf_predict
 import os
 import hashlib
 import base64
@@ -452,6 +454,20 @@ def health_schema():
         and "archived_at" in articles_columns
         and "admin_actions" in table_names
     )
+    # Modèle utilisé pour le score d'authenticité (étape 2 du pipeline de
+    # vérification) : on lit l'état sans forcer de chargement (status() ne
+    # déclenche rien) pour que consulter /health n'ait pas de coût mémoire.
+    eff_etat = efficientnet.status()
+    if eff_etat == "actif":
+        modele_score_authenticite = efficientnet.MODEL_VERSION
+    elif eff_etat == "non_sollicite":
+        modele_score_authenticite = (
+            f"{efficientnet.MODEL_VERSION} si disponible à la première vérification, "
+            "sinon repli automatique (état non encore connu)"
+        )
+    else:
+        modele_score_authenticite = "RandomForest-v1 (repli)" if rf_predict.is_model_available() else "heuristique (repli)"
+
     return {
         "status": "ok" if schema_ok else "schema_incomplet",
         "moteur": engine.dialect.name,
@@ -460,6 +476,13 @@ def health_schema():
             "articles.is_archived": "is_archived" in articles_columns,
             "articles.archived_at": "archived_at" in articles_columns,
             "table_admin_actions": "admin_actions" in table_names,
+        },
+        "modele_authenticite": {
+            "modele_utilise_score_cnn": modele_score_authenticite,
+            "efficientnet_etat": eff_etat,
+            "efficientnet_checkpoint_present": os.path.exists(efficientnet.MODEL_PATH),
+            "efficientnet_erreur_chargement": efficientnet.load_error(),
+            "random_forest_disponible": rf_predict.is_model_available(),
         },
     }
 
