@@ -68,12 +68,6 @@
       box-shadow:0 16px 40px rgba(26,22,20,0.15);
       animation:slideIn .4s cubic-bezier(.2,.8,.2,1);
     }
-    .api-badge{
-      display:inline-block;padding:3px 9px;
-      background:rgba(45,106,79,0.12);border:1px solid rgba(45,106,79,0.4);
-      color:#1f5a3d;font-size:9px;letter-spacing:1px;margin-left:8px;
-      font-weight:600;border-radius:5px;
-    }
   </style>
 </head>
 <body>
@@ -200,9 +194,9 @@ function AuthScreen({onLogin, showToast}) {
         </div>
 
         {/* Demo login */}
-        <button onClick={demoLogin} disabled={loading} style={{padding:"12px 0",border:"1px solid rgba(201,168,76,0.3)",background:"transparent",color:"#C9A84C",fontSize:12,letterSpacing:1,cursor:"pointer"}}>ACCÈS DÉMO RAPIDE (sophie@luxloc.fr)</button>
+        <button onClick={demoLogin} disabled={loading} style={{padding:"12px 0",border:"1px solid rgba(201,168,76,0.3)",background:"transparent",color:"#C9A84C",fontSize:12,letterSpacing:1,cursor:"pointer"}}>Découvrir la démonstration</button>
 
-        <p style={{fontSize:10,color:"rgba(26,22,20,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, les données sont stockées localement via l'API FastAPI.</p>
+        <p style={{fontSize:10,color:"rgba(26,22,20,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.</p>
       </div>
     </div>
   </div>
@@ -410,7 +404,6 @@ function Nav({screen,setScreen,user,onLogout}){
       {user && <span style={{fontSize:11,color:"rgba(26,22,20,0.4)"}}>{user.first_name} {user.last_name}</span>}
       <div style={{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#6D2E46,#C9A84C)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:500}}>{user?user.first_name[0]+user.last_name[0]:"?"}</div>
       <button onClick={onLogout} style={{background:"none",border:"1px solid rgba(26,22,20,0.1)",padding:"4px 12px",fontSize:10,color:"rgba(26,22,20,0.4)",cursor:"pointer",letterSpacing:1}}>DÉCONNEXION</button>
-      <span className="api-badge">API LIVE</span>
     </div>
   </nav>
 }
@@ -422,7 +415,7 @@ function Landing({setScreen,articles,stats}){
   const [hovered,setHovered]=useState(null);
   useEffect(()=>{setTimeout(()=>setLoaded(true),100)},[]);
 
-  // Pieces choisies pour l empilement du hero
+  // Pièces choisies pour l'empilement du hero
   const withPhoto = (articles||[]).filter(a=>a.photo);
   const feat = (withPhoto.length>=2 ? withPhoto : (articles||[])).slice(0,3);
   const featuredGrid = (articles||[]).slice(0,4);
@@ -444,7 +437,7 @@ function Landing({setScreen,articles,stats}){
 
       <div style={{maxWidth:1380,margin:"0 auto",display:"grid",gridTemplateColumns:"1.05fr 0.95fr",gap:"clamp(40px,5vw,90px)",alignItems:"center",position:"relative"}}>
 
-        {/* Cote texte */}
+        {/* Côté texte */}
         <div style={fadeIn(0)}>
           <div style={{fontSize:11,letterSpacing:5,color:"#8a6e26",marginBottom:36,fontWeight:600,display:"flex",alignItems:"center",gap:14}}>
             <span style={{display:"inline-block",width:36,height:1,background:"#C9A84C"}}/>
@@ -454,11 +447,11 @@ function Landing({setScreen,articles,stats}){
           <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(46px,7vw,112px)",fontWeight:300,lineHeight:0.94,marginBottom:36,letterSpacing:"-0.025em"}}>
             Le luxe<br/>
             <span style={{fontWeight:700}}>se partage</span><br/>
-            <span style={{fontStyle:"italic",fontWeight:400,color:"#C9A84C"}}>desormais</span>.
+            <span style={{fontStyle:"italic",fontWeight:400,color:"#C9A84C"}}>désormais</span>.
           </h1>
 
           <p style={{fontSize:17,lineHeight:1.65,color:"rgba(26,22,20,0.6)",maxWidth:500,marginBottom:48,fontWeight:400}}>
-            Une nouvelle facon d'acceder aux pieces les plus rares — verifiees une a une par notre intelligence artificielle. Authenticite garantie, elegance accessible.
+            Une nouvelle façon d'accéder aux pièces les plus rares — vérifiées une à une par notre intelligence artificielle. Authenticité garantie, élégance accessible.
           </p>
 
           <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
@@ -467,7 +460,7 @@ function Landing({setScreen,articles,stats}){
           </div>
         </div>
 
-        {/* Cote visuel — pile de cartes asymetriques */}
+        {/* Côté visuel — pile de cartes asymétriques */}
         <div style={{position:"relative",height:"clamp(440px,52vh,600px)",transform:`translateY(${-scrollY*0.12}px)`,willChange:"transform",...fadeIn(0.25)}}>
         <div ref={tiltRef} style={{position:"absolute",inset:0,transition:"transform .4s cubic-bezier(0.2,0.8,0.2,1)"}}>
 
@@ -505,12 +498,11 @@ function Landing({setScreen,articles,stats}){
       </div>
 
       {/* Stats sous le hero — chiffres animés au défilement */}
-      <div style={{maxWidth:1380,margin:"clamp(60px,8vw,100px) auto 0",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0,borderTop:"1px solid rgba(26,22,20,0.1)",paddingTop:36,...fadeIn(0.5)}}>
+      <div style={{maxWidth:1380,margin:"clamp(60px,8vw,100px) auto 0",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:0,borderTop:"1px solid rgba(26,22,20,0.1)",paddingTop:36,...fadeIn(0.5)}}>
         {[
-          {render:<><Counter value={(stats?.articles||8)} suffix="+"/></>, l:"PIÈCES CERTIFIÉES"},
-          {render:<><Counter value={99.1} decimals={1} suffix="%"/></>, l:"AUTHENTIFICATION"},
-          {render:<><span style={{opacity:0.85}}>&lt;</span><Counter value={15} suffix="s"/></>, l:"PAR ARTICLE"},
-          {render:<><Counter value={4.9} decimals={1}/><span style={{color:"rgba(26,22,20,0.45)"}}>/5</span></>, l:"SATISFACTION"}
+          {render:<><Counter value={stats?.total_articles||0}/></>, l:"PIÈCES CERTIFIÉES"},
+          {render:<><Counter value={stats?.verification?.taux_auto_validation||0} decimals={1} suffix="%"/></>, l:"AUTHENTIFICATION AUTOMATIQUE"},
+          {render:<><Counter value={stats?.score_ia_moyen||0} decimals={2}/></>, l:"SCORE IA MOYEN"}
         ].map((s,i)=>
           <div key={i} style={{padding:"0 28px",borderLeft:i>0?"1px solid rgba(26,22,20,0.08)":"none"}}>
             <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(28px,3vw,42px)",fontWeight:300,marginBottom:8,letterSpacing:"-0.015em"}}>{s.render}</div>
@@ -666,13 +658,15 @@ function Landing({setScreen,articles,stats}){
           <div>
             <div style={{fontSize:10,letterSpacing:3,color:"#C9A84C",fontWeight:600,marginBottom:18}}>TECHNOLOGIE</div>
             <div onClick={()=>setScreen(SCREENS.MODEL_IA)} style={{fontSize:13,marginBottom:10,cursor:"pointer",color:"rgba(245,240,235,0.6)",transition:"color .2s"}} onMouseEnter={e=>e.target.style.color="#C9A84C"} onMouseLeave={e=>e.target.style.color="rgba(245,240,235,0.6)"}>Notre modèle d'authentification IA</div>
-            <div style={{fontSize:13,marginBottom:10,color:"rgba(245,240,235,0.55)"}}>Random Forest · 9 features</div>
-            <div style={{fontSize:13,color:"rgba(245,240,235,0.55)"}}>API publique · Documentation</div>
+            <div style={{fontSize:13,color:"rgba(245,240,235,0.55)"}}>Random Forest · 9 features</div>
           </div>
         </div>
         <div style={{paddingTop:32,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
           <div style={{fontSize:11,letterSpacing:2,color:"rgba(245,240,235,0.35)"}}>© 2026 LUXLOC · MAISON PARIS · TOUS DROITS RÉSERVÉS</div>
-          <div style={{fontSize:11,letterSpacing:2,color:"rgba(245,240,235,0.35)"}}>Fait avec exigence à Paris</div>
+          <div style={{display:"flex",alignItems:"center",gap:20}}>
+            <div style={{fontSize:11,letterSpacing:2,color:"rgba(245,240,235,0.35)"}}>Fait avec exigence à Paris</div>
+            <a href="/docs" target="_blank" rel="noopener noreferrer" style={{fontSize:11,letterSpacing:1,color:"rgba(245,240,235,0.25)",textDecoration:"none"}} onMouseEnter={e=>e.target.style.color="rgba(245,240,235,0.5)"} onMouseLeave={e=>e.target.style.color="rgba(245,240,235,0.25)"}>Documentation technique de l'API</a>
+          </div>
         </div>
       </div>
     </footer>
@@ -771,7 +765,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{marginBottom:40}}>
-        <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PROPRIÉTAIRE — VÉRIFICATION<span className="api-badge">CONNECTÉ API</span></div>
+        <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PROPRIÉTAIRE — VÉRIFICATION</div>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:8}}>Authentifiez votre article</h1>
       </div>
       <div style={{display:"flex",gap:4,marginBottom:40}}>
@@ -856,7 +850,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
         </div>
         <div style={{fontSize:14,color:"#C9A84C",marginBottom:8}}>{pLabel}</div>
         <div style={{width:300,height:3,background:"rgba(26,22,20,0.06)",margin:"16px auto",borderRadius:2}}><div style={{height:"100%",background:"#C9A84C",borderRadius:2,width:`${progress}%`,transition:"width 0.3s"}}/></div>
-        <div style={{fontSize:11,color:"rgba(26,22,20,0.3)",marginTop:16}}>Appel POST /api/v1/verification/launch en cours...</div>
+        <div style={{fontSize:11,color:"rgba(26,22,20,0.3)",marginTop:16}}>Analyse de l'article en cours...</div>
       </div>}
     </div>
   </div>
@@ -883,12 +877,12 @@ function OwnerResult({setScreen,verifResult,showToast}){
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{textAlign:"center",marginBottom:48,opacity:loaded?1:0,transform:loaded?"translateY(0)":"translateY(20px)",transition:"all 0.6s"}}>
         <div style={{width:100,height:100,borderRadius:"50%",margin:"0 auto 24px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:36,color:"#5DCAA5"}}>✓</span></div>
-        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:12}}>{verifResult.verdict}<span className="api-badge">DONNÉES API</span></div>
+        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:12}}>{verifResult.verdict}</div>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:36,marginBottom:8}}>Score de confiance : <span style={{color:"#5DCAA5"}}>{sc.global}</span></h1>
         <p style={{fontSize:12,color:"rgba(26,22,20,0.35)"}}>Pipeline {verifResult.pipeline?.version} — {verifResult.pipeline?.processing_time_ms}ms</p>
       </div>
       <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:28,marginBottom:24}}>
-        <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:20}}>DÉTAIL PAR COMPOSANT (retourné par l'API)</div>
+        <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:20}}>Détail de l'analyse</div>
         {scores.map((s,i)=>{const v=Math.min(Math.max(s.score,0),1);const color=v>=0.85?"#5DCAA5":v>=0.7?"#C9A84C":"#EF9F27";return <div key={i} style={{display:"flex",alignItems:"center",gap:16,marginBottom:i<scores.length-1?16:0}}>
           <span style={{fontSize:13,color:"rgba(26,22,20,0.6)",minWidth:160}}>{s.label}</span>
           <div style={{flex:1,height:4,background:"rgba(26,22,20,0.06)",borderRadius:2}}><div style={{height:"100%",background:color,borderRadius:2,width:`${v*100}%`,transition:"width 1s ease-out",transitionDelay:`${i*0.15}s`}}/></div>
@@ -913,7 +907,7 @@ function OwnerResult({setScreen,verifResult,showToast}){
         </> : <>
           <div style={{fontSize:12,letterSpacing:2,color:"#EF9F27",marginBottom:8}}>EN ATTENTE DE VALIDATION EXPERT</div>
           <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6,marginBottom:16}}>Le score se situe dans la zone d'incertitude (0,40–0,84). Conformément au pipeline, l'article est routé vers un expert humain qui tranche avant la mise en location.</p>
-          <button onClick={expertValidate} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>SIMULER LA VALIDATION PAR UN EXPERT</button>
+          <button onClick={expertValidate} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>Valider en tant qu'expert</button>
         </>}
       </div>}
       <div style={{display:"flex",gap:12}}>
@@ -974,7 +968,7 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{padding:"40px clamp(16px,4vw,48px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
-        <div><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>LOCATAIRE<span className="api-badge">GET /articles</span></div><h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32}}>Catalogue</h1></div>
+        <div><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>LOCATAIRE</div><h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32}}>Catalogue</h1></div>
         <div style={{display:"flex",gap:6}}>
           {[{id:"all",label:"Tous"},...categories].map(c=><button key={c.id} onClick={()=>setFilter(c.id)} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",border:`1px solid ${filter===c.id?"#C9A84C":"rgba(26,22,20,0.1)"}`,background:filter===c.id?"rgba(201,168,76,0.1)":"transparent",color:filter===c.id?"#C9A84C":"rgba(26,22,20,0.4)",cursor:"pointer"}}>{c.label}</button>)}
         </div>
@@ -1039,8 +1033,8 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
               <div style={{display:"flex",justifyContent:"space-between",fontSize:15,padding:"12px 0 0",borderTop:"1px solid rgba(201,168,76,0.2)",fontWeight:600}}><span style={{color:"#C9A84C"}}>Total</span><span style={{color:"#C9A84C"}}>{estimate.total}€</span></div>
             </>}
           </div>
-          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>RÉSERVER VIA API →</button>
-          <p style={{fontSize:11,color:"rgba(26,22,20,0.3)",textAlign:"center",marginTop:12}}>POST /api/v1/transactions/ — Paiement sécurisé</p>
+          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>Réserver →</button>
+          <p style={{fontSize:11,color:"rgba(26,22,20,0.3)",textAlign:"center",marginTop:12}}>Paiement sécurisé</p>
         </div>
       </div>
     </div>
@@ -1055,9 +1049,9 @@ function RenterReturn({setScreen,showToast}){
 
   const submitReturn = async () => {
     try {
-      const res = await api("/returns/",{method:"POST",body:{transaction_id:1,general_condition:conditions.general||false,cleanliness:conditions.clean||false,hardware_intact:conditions.hardware||false,accessories_returned:conditions.accessories||false,notes:"Retour via maquette LUXLOC"}});
+      const res = await api("/returns/",{method:"POST",body:{transaction_id:1,general_condition:conditions.general||false,cleanliness:conditions.clean||false,hardware_intact:conditions.hardware||false,accessories_returned:conditions.accessories||false,notes:"Retour standard"}});
       setReturnResult(res);
-      showToast(`✓ Retour enregistré via API — ${res.condition}`);
+      showToast(`✓ Retour enregistré — ${res.condition}`);
     } catch(e) { showToast("✗ "+e.message); }
   };
 
@@ -1065,7 +1059,7 @@ function RenterReturn({setScreen,showToast}){
 
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
-      <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>LOCATAIRE — RETOUR<span className="api-badge">POST /returns</span></div>
+      <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>LOCATAIRE — RETOUR</div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:32}}>Retour de l'article</h1>
 
       <div style={{display:"flex",gap:16,padding:20,border:"1px solid rgba(26,22,20,0.08)",marginBottom:32}}>
@@ -1093,7 +1087,7 @@ function RenterReturn({setScreen,showToast}){
       {returnResult&&<div style={{textAlign:"center",padding:28,border:"1px solid rgba(93,202,165,0.2)",background:"rgba(93,202,165,0.03)",marginBottom:24}}>
         <div style={{fontSize:11,letterSpacing:3,color:"#5DCAA5",marginBottom:8}}>{returnResult.verdict}</div>
         <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18}}>Garantie : {returnResult.guarantee?.refunded}€ restitués / {returnResult.guarantee?.deducted}€ retenus</div>
-        <div style={{fontSize:10,color:"rgba(26,22,20,0.3)",marginTop:8}}>Réponse API : condition={returnResult.condition}</div>
+        <div style={{fontSize:10,color:"rgba(26,22,20,0.3)",marginTop:8}}>État constaté : {returnResult.condition}</div>
       </div>}
 
       <div style={{display:"flex",gap:12}}>
@@ -1285,7 +1279,7 @@ function RenterPayment({setScreen,article,txData,showToast}){
         <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",marginBottom:24}}>Votre article sera disponible aux dates prévues. Vous recevrez un email de confirmation.</p>
         <div style={{display:"flex",gap:12,justifyContent:"center"}}>
           <button onClick={()=>setScreen(SCREENS.RENTER_PROFILE)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>MES LOCATIONS</button>
-          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>SIMULER LE RETOUR</button>
+          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>Déclarer le retour</button>
         </div>
       </div>}
     </div>
@@ -1486,7 +1480,7 @@ function StatsScreen(){
 
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:C.ink}}>
     <div style={{maxWidth:1100,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
-      <div style={{fontSize:11,letterSpacing:4,color:C.gold,marginBottom:8}}>SUPERVISION DE LA PLATEFORME<span className="api-badge">GET /platform/stats</span></div>
+      <div style={{fontSize:11,letterSpacing:4,color:C.gold,marginBottom:8}}>SUPERVISION DE LA PLATEFORME</div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:8}}>Statistiques</h1>
       <p style={{fontSize:13,color:C.muted,marginBottom:36}}>Vue d'ensemble en temps réel — données agrégées depuis l'API LUXLOC.</p>
 
@@ -1604,16 +1598,19 @@ function App(){
   const [selectedArticle,setSelectedArticle]=useState(null);
   const [txData,setTxData]=useState(null);
   const [toast,setToast]=useState(null);
-  const [stats,setStats]=useState({articles:0});
+  const [stats,setStats]=useState(null);
   const showToast=useCallback(msg=>{setToast(msg);setTimeout(()=>setToast(null),3500);},[]);
 
   const handleLogin = async (u) => {
     setUser(u);
     setScreen(SCREENS.LANDING);
     try {
-      const arts = await api("/articles/?verified_only=false&limit=50");
+      const [arts, platformStats] = await Promise.all([
+        api("/articles/?verified_only=false&limit=50"),
+        api("/articles/platform/stats"),
+      ]);
       setArticles(arts);
-      setStats({articles:arts.length});
+      setStats(platformStats);
     } catch(e) {}
   };
 
