@@ -1197,21 +1197,49 @@ function OwnerDashboard({setScreen,user,showToast}){
 }
 
 // ═══ RENTER PAYMENT ═══
-function RenterPayment({setScreen,article,txData,showToast}){
+// Algorithme de Luhn : la somme de contrôle que respecte tout numéro de
+// carte bancaire valide (4242 4242 4242 4242 passe, 1234 5678… non).
+function luhnValide(num){
+  const d=num.replace(/\D/g,"");
+  if(d.length!==16) return false;
+  let s=0;
+  for(let i=0;i<16;i++){ let n=+d[15-i]; if(i%2===1){ n*=2; if(n>9) n-=9; } s+=n; }
+  return s%10===0;
+}
+function expirationValide(v){
+  const m=/^(\d{2})\/(\d{2})$/.exec(v);
+  if(!m) return false;
+  const mois=+m[1], annee=2000+ +m[2];
+  if(mois<1||mois>12) return false;
+  const now=new Date();
+  return annee>now.getFullYear() || (annee===now.getFullYear() && mois>=now.getMonth()+1);
+}
+
+function RenterPayment({setScreen,article,txData,showToast,user}){
   const [cardNum,setCardNum]=useState("");
   const [expiry,setExpiry]=useState("");
   const [cvv,setCvv]=useState("");
   const [paying,setPaying]=useState(false);
   const [paid,setPaid]=useState(false);
+  const [reference,setReference]=useState("");
+  const [erreur,setErreur]=useState("");
 
-  const processPayment = () => {
+  const processPayment = async () => {
+    if(!luhnValide(cardNum)) return setErreur("Ce numéro de carte n'est pas valide. Vérifiez les 16 chiffres.");
+    if(!expirationValide(expiry)) return setErreur("La date d'expiration doit être au format MM/AA et ne pas être dépassée.");
+    if(cvv.length!==3) return setErreur("Le code de sécurité doit comporter 3 chiffres.");
+    setErreur("");
     setPaying(true);
-    setTimeout(()=>{
-      setPaying(false);
+    try{
+      // Seule la réservation est envoyée : le numéro de carte ne quitte jamais le navigateur.
+      const res=await api(`/transactions/${txData.transaction_id}/pay?renter_id=${user?.id}`,{method:"POST"});
+      setReference(res.reference);
       setPaid(true);
-      showToast("✓ Paiement confirmé — Stripe #pi_" + Math.random().toString(36).substring(2,10));
-    },2500);
+      showToast("✓ Paiement enregistré");
+    }catch(e){ setErreur(e.message); }
+    setPaying(false);
   };
+  const pret = cardNum.length>=19 && expiry.length===5 && cvv.length===3;
 
   if(!article||!txData) return null;
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
@@ -1251,20 +1279,22 @@ function RenterPayment({setScreen,article,txData,showToast}){
           <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Numéro de carte</label>
           <input value={cardNum} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,16);v=v.replace(/(.{4})/g,"$1 ").trim();setCardNum(v);}} placeholder="4242 4242 4242 4242" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:16,letterSpacing:2,boxSizing:"border-box",fontFamily:"'Montserrat',monospace"}}/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Expiration</label><input value={expiry} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,4);if(v.length>2)v=v.substring(0,2)+"/"+v.substring(2);setExpiry(v);}} placeholder="MM/YY" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
+            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Expiration</label><input value={expiry} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,4);if(v.length>2)v=v.substring(0,2)+"/"+v.substring(2);setExpiry(v);}} placeholder="MM/AA" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
             <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>CVV</label><input value={cvv} onChange={e=>setCvv(e.target.value.replace(/\D/g,"").substring(0,3))} placeholder="123" type="password" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
           </div>
         </div>
       </div>
 
-      <button onClick={processPayment} disabled={paying||cardNum.length<19} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:cardNum.length>=19?"#C9A84C":"rgba(26,22,20,0.08)",color:cardNum.length>=19?"#1A1614":"rgba(26,22,20,0.25)",cursor:cardNum.length>=19?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours...":"PAYER "+txData.summary?.total+"€ — STRIPE SÉCURISÉ"}</button>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12,color:"rgba(26,22,20,0.35)"}}><Icon name="shield" size={14} stroke={1.4}/><span style={{fontSize:11,color:"rgba(26,22,20,0.45)"}}>Paiement sécurisé par Stripe — Chiffrement SSL 256 bits</span></div>
+      {erreur&&<div role="alert" style={{fontSize:13,color:"#A33A34",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",padding:"10px 14px",marginBottom:14}}>{erreur}</div>}
+      <button onClick={processPayment} disabled={paying||!pret} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:pret?"#C9A84C":"rgba(26,22,20,0.08)",color:pret?"#1A1614":"rgba(26,22,20,0.25)",cursor:pret?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours…":"PAYER "+txData.summary?.total+" €"}</button>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"center",gap:8,marginTop:12}}><Icon name="shield" size={14} stroke={1.4}/><span style={{fontSize:11,lineHeight:1.5,color:"rgba(26,22,20,0.5)",maxWidth:420}}>Paiement de démonstration : aucune carte n'est débitée et le numéro saisi n'est jamais envoyé. Carte de test : 4242 4242 4242 4242, une date future, n'importe quel code à 3 chiffres.</span></div>
       </>
       :<div style={{textAlign:"center",padding:40}}>
         <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 20px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:32,color:"#5DCAA5"}}>✓</span></div>
-        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:8}}>PAIEMENT CONFIRMÉ</div>
+        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:8}}>PAIEMENT ENREGISTRÉ</div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:24,marginBottom:8}}>Réservation validée !</h2>
-        <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",marginBottom:24}}>Votre article sera disponible aux dates prévues. Vous recevrez un email de confirmation.</p>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",marginBottom:8}}>L'article vous sera remis aux dates prévues. Retrouvez cette réservation dans « Mes locations ».</p>
+        <p style={{fontSize:12,color:"rgba(26,22,20,0.4)",marginBottom:24}}>Référence de paiement (démonstration) : <span style={{fontFamily:"monospace",color:"#1A1614"}}>{reference}</span></p>
         <div style={{display:"flex",gap:12,justifyContent:"center"}}>
           <button onClick={()=>setScreen(SCREENS.RENTER_PROFILE)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>MES LOCATIONS</button>
           <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>Déclarer le retour</button>
@@ -1996,7 +2026,7 @@ function App(){
     {screen===SCREENS.OWNER_DASHBOARD&&<OwnerDashboard setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_BROWSE&&<RenterBrowse setScreen={setScreen} articles={articles} setSelectedArticle={setSelectedArticle}/>}
     {screen===SCREENS.RENTER_DETAIL&&<RenterDetail setScreen={setScreen} article={selectedArticle} showToast={showToast} user={user} setTxData={setTxData}/>}
-    {screen===SCREENS.RENTER_PAYMENT&&<RenterPayment setScreen={setScreen} article={selectedArticle} txData={txData} showToast={showToast}/>}
+    {screen===SCREENS.RENTER_PAYMENT&&<RenterPayment setScreen={setScreen} article={selectedArticle} txData={txData} showToast={showToast} user={user}/>}
     {screen===SCREENS.RENTER_PROFILE&&<RenterProfile setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_RETURN&&<RenterReturn setScreen={setScreen} showToast={showToast}/>}
     {screen===SCREENS.MODEL_IA&&<ModelIA/>}
