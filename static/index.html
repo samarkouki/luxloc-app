@@ -1644,10 +1644,10 @@ function AdminConsole({user,showToast,onChange}){
   };
 
   // ── Actions modération ──
-  const doValidate=(m)=>askConfirm(`Valider « ${m.title} » de ${m.owner?.name||"ce propriétaire"} ? L'article deviendra disponible à la location.`, async()=>{
+  const doValidate=(m)=>askConfirm(`« ${m.title} » de ${m.owner?.name||"ce propriétaire"} passe-t-il le contrôle ? L'article deviendra disponible à la location.`, async()=>{
     try{ await adminApi(`/verification/${m.article_id}/expert-validate`,{method:"POST"}); showToast("✓ Article validé"); load("moderation"); notifyChange(); }
     catch(e){ showToast("✗ "+e.message); }
-  }, "Valider");
+  }, "Oui, ça passe");
 
   const doRelaunch=async(m)=>{
     try{ await adminApi(`/verification/${m.article_id}/relaunch`,{method:"POST"}); showToast("✓ Analyse relancée"); load("moderation"); notifyChange(); }
@@ -1672,10 +1672,10 @@ function AdminConsole({user,showToast,onChange}){
       load("articles");
     } catch(e){ showToast("✗ "+e.message); }
   };
-  const doArchive=(a)=>askConfirm(`Archiver « ${a.title} » de ${a.owner?.name||"ce propriétaire"} ? L'article disparaîtra du catalogue public.`, async()=>{
-    try{ await adminApi(`/articles/${a.id}`,{method:"DELETE"}); showToast("✓ Article archivé"); load("articles"); notifyChange(); }
+  const doArchive=(a)=>askConfirm(`Supprimer « ${a.title} » de ${a.owner?.name||"ce propriétaire"} ? L'article disparaîtra du catalogue public. Cette action est réversible depuis « Restaurer ».`, async()=>{
+    try{ await adminApi(`/articles/${a.id}`,{method:"DELETE"}); showToast("✓ Article supprimé"); load("articles"); notifyChange(); }
     catch(e){ showToast("✗ "+e.message); }
-  }, "Archiver");
+  }, "Supprimer");
   const doRestore=async(a)=>{
     try{ await adminApi(`/articles/${a.id}/restore`,{method:"POST"}); showToast("✓ Article restauré"); load("articles"); notifyChange(); }
     catch(e){ showToast("✗ "+e.message); }
@@ -1753,8 +1753,8 @@ function AdminConsole({user,showToast,onChange}){
                   <div style={{fontSize:13}}>Score global : <strong style={{color:C.gold,fontSize:16}}>{m.score_global!=null?m.score_global.toFixed(2):"—"}</strong></div>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  <button onClick={()=>doValidate(m)} style={{padding:"9px 0",border:"none",background:"rgba(45,106,79,0.12)",color:C.green,cursor:"pointer",fontSize:12,fontWeight:600}}>Valider</button>
-                  <button onClick={()=>setRejectTarget(m)} style={{padding:"9px 0",border:"1px solid rgba(192,96,90,0.4)",background:"transparent",color:C.red,cursor:"pointer",fontSize:12,fontWeight:600}}>Rejeter</button>
+                  <button onClick={()=>doValidate(m)} style={{padding:"9px 0",border:"none",background:"rgba(45,106,79,0.12)",color:C.green,cursor:"pointer",fontSize:12,fontWeight:600}}>Ça passe</button>
+                  <button onClick={()=>setRejectTarget(m)} style={{padding:"9px 0",border:"1px solid rgba(192,96,90,0.4)",background:"transparent",color:C.red,cursor:"pointer",fontSize:12,fontWeight:600}}>Ça ne passe pas</button>
                   <button onClick={()=>doRelaunch(m)} style={{padding:"9px 0",border:`1px solid ${C.border}`,background:"transparent",color:C.muted,cursor:"pointer",fontSize:12}}>Relancer l'analyse</button>
                 </div>
               </div>
@@ -1797,7 +1797,7 @@ function AdminConsole({user,showToast,onChange}){
                   <button onClick={()=>openEdit(a)} style={smallBtn(C)}>Modifier</button>
                   {!a.is_archived && <button onClick={()=>toggleAvailable(a)} style={smallBtn(C)}>{a.is_available?"Dépublier":"Publier"}</button>}
                   {a.is_archived ? <button onClick={()=>doRestore(a)} style={smallBtn(C)}>Restaurer</button>
-                    : <button onClick={()=>doArchive(a)} style={smallBtnDanger(C)}>Archiver</button>}
+                    : <button onClick={()=>doArchive(a)} style={smallBtnDanger(C)}>Supprimer</button>}
                 </div>
               </div>
             )}
@@ -1869,14 +1869,14 @@ function AdminConsole({user,showToast,onChange}){
 
     {rejectTarget && <div style={{position:"fixed",inset:0,background:"rgba(26,22,20,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>{setRejectTarget(null);setMotif("");}}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#FAF8F4",padding:32,maxWidth:440,width:"100%",boxShadow:"0 24px 60px rgba(26,22,20,0.3)"}}>
-        <p style={{fontSize:15,marginBottom:16}}>Rejeter « {rejectTarget.title} » de {rejectTarget.owner?.name||"ce propriétaire"} ?</p>
+        <p style={{fontSize:15,marginBottom:16}}>« {rejectTarget.title} » de {rejectTarget.owner?.name||"ce propriétaire"} ne passe pas le contrôle ? Choisissez le motif :</p>
         <select value={motif} onChange={e=>setMotif(e.target.value)} style={{width:"100%",padding:"10px 12px",border:`1px solid ${C.border}`,fontSize:13,marginBottom:20}}>
           <option value="">Choisir un motif…</option>
           {REJECT_MOTIFS.map(m=><option key={m} value={m}>{m}</option>)}
         </select>
         <div style={{display:"flex",gap:12,justifyContent:"flex-end"}}>
           <button onClick={()=>{setRejectTarget(null);setMotif("");}} style={{padding:"10px 20px",border:`1px solid ${C.border}`,background:"transparent",color:C.ink,cursor:"pointer",fontSize:12}}>ANNULER</button>
-          <button onClick={confirmReject} disabled={!motif} style={{padding:"10px 20px",border:"none",background:motif?C.red:C.border,color:motif?"#fff":C.muted,cursor:motif?"pointer":"default",fontSize:12,fontWeight:600}}>REJETER</button>
+          <button onClick={confirmReject} disabled={!motif} style={{padding:"10px 20px",border:"none",background:motif?C.red:C.border,color:motif?"#fff":C.muted,cursor:motif?"pointer":"default",fontSize:12,fontWeight:600}}>NON, ÇA NE PASSE PAS</button>
         </div>
       </div>
     </div>}
