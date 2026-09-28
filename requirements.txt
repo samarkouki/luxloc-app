@@ -10,3 +10,14 @@ joblib
 psycopg2-binary
 psycopg[binary]
 pytesseract
+
+# Authentification par EfficientNet-B0 (luxury_authenticator_v1). Variante
+# CPU uniquement : la variante par défaut de torch embarque des
+# dépendances CUDA qui alourdissent inutilement l'image de déploiement
+# sur Railway (pas de GPU disponible). Important : le suffixe +cpu est
+# nécessaire dans le pin — sans lui, pip résout "torch==2.2.2" sur PyPI
+# (le wheel CUDA, ~750 Mo) au lieu du wheel CPU de cet index (~180 Mo),
+# les deux portant le même numéro de version côté PyPI.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.2+cpu
+torchvision==0.17.2+cpu

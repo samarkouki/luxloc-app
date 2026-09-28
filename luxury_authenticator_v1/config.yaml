@@ -1,0 +1,11 @@
+seed: 42
+image_size: 224
+batch_size: 32
+epochs: 8
+lr: 0.0002
+weight_decay: 0.0001
+num_workers: 2
+train_fraction: 0.70
+val_fraction: 0.15
+test_fraction: 0.15
+model_name: efficientnet_b0

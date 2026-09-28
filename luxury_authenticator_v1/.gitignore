@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+models/*.pth
+models/*.json
+models/*.png
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Checkpoint et métriques du modèle en service (branche integration-authenticator) :
+# ces deux fichiers doivent être versionnés, contrairement aux autres
+# artefacts de models/ (checkpoints intermédiaires, métriques d'essais locaux).
+!models/luxury_authenticator.pth
+!models/metrics.json

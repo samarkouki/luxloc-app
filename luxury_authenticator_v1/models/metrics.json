@@ -1,0 +1,49 @@
+{
+  "generated_at": "2026-09-28T13:12:28.015811+00:00",
+  "model_path": "models/luxury_authenticator.pth",
+  "device": "cpu",
+  "image_size": 224,
+  "best_val_acc": 0.8382978723404255,
+  "best_epoch": 5,
+  "classes": {
+    "fake": 0,
+    "real": 1
+  },
+  "positive_class": "real",
+  "test_images": 235,
+  "accuracy": 0.825531914893617,
+  "precision": 0.8384615384615385,
+  "recall": 0.8449612403100775,
+  "f1_score": 0.8416988416988418,
+  "roc_auc": 0.8988591487494515,
+  "confusion_matrix": {
+    "labels": [
+      "fake",
+      "real"
+    ],
+    "matrix": [
+      [
+        85,
+        21
+      ],
+      [
+        20,
+        109
+      ]
+    ]
+  },
+  "per_class": {
+    "fake": {
+      "precision": 0.8095238095238095,
+      "recall": 0.8018867924528302,
+      "f1_score": 0.8056872037914692,
+      "support": 106
+    },
+    "real": {
+      "precision": 0.8384615384615385,
+      "recall": 0.8449612403100775,
+      "f1_score": 0.8416988416988418,
+      "support": 129
+    }
+  }
+}
