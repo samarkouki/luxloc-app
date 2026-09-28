@@ -21,11 +21,39 @@ retenter à chaque requête un chargement durablement impossible) ; le
 pipeline de vérification bascule alors silencieusement sur le Random
 Forest (app.ml.predict), qui a lui-même un repli heuristique. L'API
 reste pleinement fonctionnelle dans tous les cas.
+
+LIBÉRATION APRÈS INACTIVITÉ : un thread démon libère la référence au
+modèle après IDLE_UNLOAD_SECONDS sans utilisation (voir unload_if_idle).
+Ça ne coûte rien aux appels normaux (une simple mise à jour d'horodatage),
+et la vérification suivante recharge le modèle en ~0,3s (torch reste
+importé dans le process — mesuré, à comparer aux ~7-9s du tout premier
+chargement) : aucun coût perceptible pour une démonstration où les
+vérifications sont rapprochées.
+
+Limite mesurée, à ne pas survendre : sur cette machine de test (Windows),
+libérer la référence et forcer gc.collect() ne fait PAS redescendre la
+mémoire résidente (RSS) du process — l'allocateur mémoire garde les pages
+libérées pour les réutiliser plutôt que de les rendre à l'OS. Le cycle
+charge/libère/recharge est sans fuite (RSS stable sur plusieurs cycles,
+pas de croissance non bornée), mais ne doit pas être présenté comme une
+façon de faire baisser la consommation mémoire observée en production —
+seul un redémarrage du process la fait redescendre. Le comportement de
+l'allocateur glibc sur Railway (Linux) peut différer ; à vérifier après
+déploiement plutôt qu'à supposer.
 """
 import os
 import json
+import gc
+import threading
+import time
 
 MODEL_VERSION = "EfficientNet-B0-v1"
+
+# Durée d'inactivité avant libération du modèle. 10 minutes : assez long
+# pour ne jamais se déclencher pendant une session de démonstration ou un
+# usage normal, assez court pour rendre la mémoire au process en dehors
+# des heures d'utilisation.
+IDLE_UNLOAD_SECONDS = 600
 
 _APP_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _AUTHENTICATOR_DIR = os.path.join(_APP_ROOT, "luxury_authenticator_v1")
@@ -35,19 +63,80 @@ METRICS_PATH = os.path.join(_AUTHENTICATOR_DIR, "models", "metrics.json")
 _predictor = None
 _load_attempted = False
 _load_error = None
+_last_used = None
+_last_unloaded_at = None
+_lock = threading.Lock()
+_watcher_started = False
+
+
+def _touch():
+    global _last_used
+    _last_used = time.monotonic()
+
+
+def _start_idle_watcher():
+    """
+    Démarre (une seule fois par process) le thread démon qui surveille
+    l'inactivité. Lancé uniquement après un premier chargement réussi —
+    inutile de faire tourner ce thread si le modèle n'a jamais servi ou
+    est durablement indisponible.
+    """
+    global _watcher_started
+    if _watcher_started:
+        return
+    _watcher_started = True
+
+    def _loop():
+        while True:
+            time.sleep(60)
+            with _lock:
+                if _predictor is not None and _last_used is not None:
+                    if time.monotonic() - _last_used > IDLE_UNLOAD_SECONDS:
+                        _unload_locked()
+
+    threading.Thread(target=_loop, name="efficientnet-idle-unload", daemon=True).start()
+
+
+def _unload_locked():
+    """Libère le modèle. À appeler avec _lock déjà acquis."""
+    global _predictor, _load_attempted, _last_used, _last_unloaded_at
+    _predictor = None
+    _load_attempted = False  # autorise un rechargement complet au prochain appel
+    _last_used = None
+    _last_unloaded_at = time.monotonic()
+    gc.collect()
+
+
+def unload_if_idle():
+    """
+    Point d'entrée testable de la libération par inactivité (le thread
+    démon appelle la même logique). Renvoie True si une libération a eu
+    lieu.
+    """
+    with _lock:
+        if _predictor is not None and _last_used is not None:
+            if time.monotonic() - _last_used > IDLE_UNLOAD_SECONDS:
+                _unload_locked()
+                return True
+    return False
 
 
 def _load():
     global _predictor, _load_attempted, _load_error
-    if _load_attempted:
-        return _predictor
-    _load_attempted = True
-    try:
-        from luxury_authenticator_v1.inference.predict import Predictor
-        _predictor = Predictor(MODEL_PATH)
-    except Exception as e:
-        _load_error = f"{type(e).__name__}: {e}"
-        _predictor = None
+    with _lock:
+        if _load_attempted:
+            if _predictor is not None:
+                _touch()
+            return _predictor
+        _load_attempted = True
+        try:
+            from luxury_authenticator_v1.inference.predict import Predictor
+            _predictor = Predictor(MODEL_PATH)
+            _touch()
+            _start_idle_watcher()
+        except Exception as e:
+            _load_error = f"{type(e).__name__}: {e}"
+            _predictor = None
     return _predictor
 
 
@@ -59,13 +148,15 @@ def is_available():
 def status():
     """
     État du chargement, sans en déclencher un : "non_sollicite" (aucune
-    vérification n'a encore eu lieu), "actif" (chargé avec succès) ou
-    "indisponible" (tenté puis échoué — voir load_error()). Utilisé par
-    /api/v1/health pour ne pas provoquer de chargement juste en consultant
-    l'état du service.
+    vérification n'a encore eu lieu), "actif" (chargé avec succès),
+    "indisponible" (tenté puis échoué — voir load_error()), ou
+    "libere_inactivite" (chargé avec succès par le passé, puis libéré
+    après IDLE_UNLOAD_SECONDS sans utilisation — se recharge tout seul à
+    la prochaine vérification). Utilisé par /api/v1/health pour ne pas
+    provoquer de chargement juste en consultant l'état du service.
     """
     if not _load_attempted:
-        return "non_sollicite"
+        return "libere_inactivite" if _last_unloaded_at is not None else "non_sollicite"
     return "actif" if _predictor is not None else "indisponible"
 
 

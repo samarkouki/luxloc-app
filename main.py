@@ -465,6 +465,8 @@ def health_schema():
             f"{efficientnet.MODEL_VERSION} si disponible à la première vérification, "
             "sinon repli automatique (état non encore connu)"
         )
+    elif eff_etat == "libere_inactivite":
+        modele_score_authenticite = f"{efficientnet.MODEL_VERSION} (libéré après inactivité, rechargement automatique à la prochaine vérification)"
     else:
         modele_score_authenticite = "RandomForest-v1 (repli)" if rf_predict.is_model_available() else "heuristique (repli)"
 
