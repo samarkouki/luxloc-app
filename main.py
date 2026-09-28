@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy import text, inspect
-from app.routers import articles, users, verification, transactions, returns
+from app.routers import articles, users, verification, transactions, returns, admin
 from app.database import engine, Base, SessionLocal
 from app.models.models import *
 import os
@@ -398,6 +398,7 @@ app.include_router(articles.router, prefix="/api/v1/articles", tags=["Articles"]
 app.include_router(verification.router, prefix="/api/v1/verification", tags=["Vérification IA"])
 app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
 app.include_router(returns.router, prefix="/api/v1/returns", tags=["Retours"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["Administration"])
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -518,9 +519,13 @@ def seed_demo_data():
                     image_data=overview_b64 if pt == "overview" else None,
                 ))
 
+        # Indices garantis en "review" (tous avail=True dans le seed ci-dessus)
+        # — la file de modération de la console admin ne doit jamais être
+        # vide pendant une démonstration.
+        REVIEW_INDICES = {2, 9, 15}
         for i, art in enumerate(articles_objects):
             if art.is_available:
-                en_examen = (i % 6 == 5)
+                en_examen = (i in REVIEW_INDICES)
                 if en_examen:
                     sg = round(random.uniform(0.62, 0.78), 4)
                     status = VerificationStatus.REVIEW

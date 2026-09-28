@@ -19,8 +19,9 @@ remplacées par EfficientNet-B4 et un Siamese Network entraînés.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.schemas import VerificationRequest
-from app.models.models import Article, Verification, VerificationStatus, ArticlePhoto
+from app.schemas.schemas import VerificationRequest, ExpertRejectRequest
+from app.models.models import Article, Verification, VerificationStatus, ArticlePhoto, User
+from app.dependencies import require_admin, log_admin_action
 from app.services import cv_analysis as cv
 from app.services import invoice_analysis as inv
 from app.services import brand_signature as brand_sig_mod
@@ -208,19 +209,25 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
 
 
 @router.post("/{article_id}/expert-validate")
-def expert_validate(article_id: int, db: Session = Depends(get_db)):
+def expert_validate(article_id: int, admin: User = Depends(require_admin),
+                     db: Session = Depends(get_db)):
     """
     Validation par un expert humain — étape de routing pour les articles
     en statut 'review' (score 0.40-0.84). L'expert tranche : l'article
     est validé, sa dernière vérification passe à VERIFIED et il devient
     disponible à la location.
 
-    En production, cette action serait réservée à un compte expert
-    authentifié et tracée.
+    Réservé à un compte admin (voir app.dependencies.require_admin), et
+    refusé si l'appelant est le propriétaire de l'article : un
+    propriétaire ne doit jamais pouvoir valider sa propre pièce, cela
+    viderait de sens le routage vers un expert humain.
     """
     article = db.query(Article).filter(Article.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article non trouvé")
+    if article.owner_id == admin.id:
+        raise HTTPException(status_code=403,
+                            detail="Un propriétaire ne peut pas valider son propre article")
 
     verif = (db.query(Verification)
              .filter(Verification.article_id == article_id)
@@ -234,6 +241,8 @@ def expert_validate(article_id: int, db: Session = Depends(get_db)):
 
     verif.status = VerificationStatus.VERIFIED
     article.is_available = True
+    log_admin_action(db, admin.id, "validate_article", "article", article.id,
+                      f"« {article.title} » validé par un expert")
     db.commit()
 
     return {
@@ -242,6 +251,61 @@ def expert_validate(article_id: int, db: Session = Depends(get_db)):
         "status": "verified",
         "is_available": True,
     }
+
+
+@router.post("/{article_id}/expert-reject")
+def expert_reject(article_id: int, payload: ExpertRejectRequest,
+                   admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """
+    Rejet motivé par un expert humain — pendant du expert-validate pour
+    les articles en 'review' qui ne passent pas le contrôle. Le motif est
+    obligatoire et conservé dans le journal d'administration.
+    """
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+    if article.owner_id == admin.id:
+        raise HTTPException(status_code=403,
+                            detail="Un propriétaire ne peut pas rejeter son propre article")
+
+    verif = (db.query(Verification)
+             .filter(Verification.article_id == article_id)
+             .order_by(Verification.id.desc())
+             .first())
+    if not verif:
+        raise HTTPException(status_code=400, detail="Aucune vérification à traiter")
+
+    verif.status = VerificationStatus.REJECTED
+    verif.reviewed_by = f"admin:{admin.id}"
+    article.is_available = False
+    log_admin_action(db, admin.id, "reject_article", "article", article.id, payload.motif)
+    db.commit()
+
+    return {
+        "message": "Article rejeté par l'expert",
+        "article_id": article_id,
+        "status": "rejected",
+        "motif": payload.motif,
+    }
+
+
+@router.post("/{article_id}/relaunch")
+def relaunch_verification(article_id: int, admin: User = Depends(require_admin),
+                           db: Session = Depends(get_db)):
+    """Relance le pipeline de vérification IA sur un article déjà soumis."""
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    # photo_ids n'est en réalité pas exploité par launch_verification, qui
+    # relit les photos réelles depuis la base à partir de l'article_id —
+    # on ne le renseigne ici que pour satisfaire la validation du schéma.
+    request = VerificationRequest(article_id=article_id, photo_ids=[1, 2, 3])
+    result = launch_verification(request, db)
+    log_admin_action(db, admin.id, "relaunch_verification", "article", article.id,
+                      f"Nouveau statut : {result['status']}")
+    db.commit()
+    return result
 
 
 @router.get("/model/info")

@@ -2,9 +2,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Body
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from datetime import datetime
 from app.database import get_db
-from app.schemas.schemas import ArticleCreate, ArticleResponse, CategoryEnum
-from app.models.models import Article, ArticlePhoto, Verification, VerificationStatus
+from app.schemas.schemas import ArticleCreate, ArticleResponse, ArticleUpdate, CategoryEnum
+from app.models.models import Article, ArticlePhoto, Verification, VerificationStatus, User
+from app.dependencies import require_admin, log_admin_action
 
 router = APIRouter()
 
@@ -42,7 +44,9 @@ def list_articles(
     db: Session = Depends(get_db),
 ):
     """Catalogue avec filtres (locataire)"""
-    query = db.query(Article)
+    # Un article archivé par un admin ne doit plus jamais apparaître ici,
+    # quels que soient les autres filtres.
+    query = db.query(Article).filter(Article.is_archived == False)
 
     if verified_only:
         query = query.filter(Article.is_available == True)
@@ -236,6 +240,62 @@ def platform_stats(db: Session = Depends(get_db)):
         "valeur_catalogue": round(valeur_catalogue, 0),
         "revenus_commission": round(revenus_commission, 2),
     }
+
+
+@router.patch("/{article_id}", response_model=ArticleResponse)
+def update_article(article_id: int, payload: ArticleUpdate,
+                    admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Modifier un article (administration) : titre, marque, modèle, catégorie, prix, état, disponibilité."""
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    changes = payload.dict(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(article, field, value)
+
+    if changes:
+        log_admin_action(db, admin.id, "update_article", "article", article.id,
+                          ", ".join(f"{k}={v}" for k, v in changes.items()))
+    db.commit()
+    db.refresh(article)
+    return _enrich_article(article, db)
+
+
+@router.delete("/{article_id}")
+def archive_article(article_id: int, admin: User = Depends(require_admin),
+                     db: Session = Depends(get_db)):
+    """
+    Archive un article (administration). Aucune suppression physique :
+    l'article disparaît du catalogue public mais reste restaurable.
+    """
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    article.is_archived = True
+    article.archived_at = datetime.utcnow()
+    article.is_available = False
+    log_admin_action(db, admin.id, "archive_article", "article", article.id, article.title)
+    db.commit()
+
+    return {"message": "Article archivé", "article_id": article.id, "is_archived": True}
+
+
+@router.post("/{article_id}/restore")
+def restore_article(article_id: int, admin: User = Depends(require_admin),
+                     db: Session = Depends(get_db)):
+    """Désarchive un article (administration) — redevient gérable par son propriétaire."""
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    article.is_archived = False
+    article.archived_at = None
+    log_admin_action(db, admin.id, "restore_article", "article", article.id, article.title)
+    db.commit()
+
+    return {"message": "Article restauré", "article_id": article.id, "is_archived": False}
 
 
 def _enrich_article(article: Article, db: Session) -> dict:
