@@ -26,6 +26,7 @@ from app.services import cv_analysis as cv
 from app.services import invoice_analysis as inv
 from app.services import brand_signature as brand_sig_mod
 from app.ml import predict as ml_predict
+from app.ml import authenticator as efficientnet
 import time
 
 router = APIRouter()
@@ -76,10 +77,49 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     stitch_img = images.get("stitching") or overview
     label_img = images.get("label") or overview
 
-    # ═══ ÉTAPE 2 — SCORE GLOBAL (modèle ML entraîné) ═══
-    # Le score global est désormais produit par le Random Forest entraîné
-    # (app.ml). Si le modèle n'est pas disponible, repli heuristique.
-    if overview:
+    # ═══ ÉTAPE 2 — SCORE GLOBAL (authenticité) ═══
+    # Le score vient d'EfficientNet-B0 (luxury_authenticator_v1) quand le
+    # modèle a pu être chargé ; sinon repli silencieux sur le Random Forest
+    # historique (app.ml), qui a lui-même un repli heuristique — l'un des
+    # trois niveaux répond toujours. EfficientNet analyse les quatre photos
+    # (pas seulement l'aperçu) : le score retenu est la probabilité la PLUS
+    # BASSE parmi les photos concluantes (confiance >= 0,80) — une seule vue
+    # suspecte doit faire baisser le score. Une photo non concluante ne
+    # compte pas comme preuve d'authenticité et est exclue du calcul ; si
+    # toutes le sont, le routage vers l'expert est forcé à l'étape 5, quel
+    # que soit le score pondéré.
+    toutes_photos_non_concluantes = False
+    if overview and efficientnet.is_available():
+        detail_par_photo = {}
+        for ptype in ("overview", "logo", "stitching", "label"):
+            img = images.get(ptype)
+            if img is not None:
+                detail_par_photo[ptype] = efficientnet.predict_one(img)
+
+        concluantes = {k: v for k, v in detail_par_photo.items() if v["concluant"]}
+        non_concluantes = [k for k in detail_par_photo if k not in concluantes]
+
+        if concluantes:
+            pire = min(concluantes, key=lambda k: concluantes[k]["score"])
+            score_cnn = concluantes[pire]["score"]
+        else:
+            # Aucune photo concluante : score neutre par défaut, le
+            # routage vers l'expert est forcé plus bas (étape 5).
+            score_cnn = 0.5
+            toutes_photos_non_concluantes = True
+
+        ml_result = {
+            "score": round(score_cnn, 4),
+            "source": "efficientnet_b0",
+            "model_version": efficientnet.MODEL_VERSION,
+            "features": {},
+            "detail_par_photo": detail_par_photo,
+            "moyenne_photos": round(
+                sum(v["score"] for v in detail_par_photo.values()) / len(detail_par_photo), 4
+            ) if detail_par_photo else None,
+            "photos_non_concluantes": non_concluantes,
+        }
+    elif overview:
         ml_result = ml_predict.predict_authenticity(overview)
         score_cnn = ml_result["score"]
     else:
@@ -139,8 +179,13 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
 
     processing_time = int((time.time() - start) * 1000)
 
-    # Routing 3 niveaux
-    if score_global >= 0.85:
+    # Routing 3 niveaux — si aucune photo n'a été concluante pour
+    # EfficientNet, on ne dispose d'aucune preuve visuelle exploitable :
+    # l'article part systématiquement en examen expert, jamais en
+    # validation automatique (ni en rejet automatique, faute de preuve).
+    if toutes_photos_non_concluantes:
+        status = VerificationStatus.REVIEW
+    elif score_global >= 0.85:
         status = VerificationStatus.VERIFIED
     elif score_global >= 0.40:
         status = VerificationStatus.REVIEW
@@ -191,6 +236,10 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
                 "source": ml_result["source"],
                 "version": ml_result["model_version"],
                 "features_extraites": ml_result["features"],
+                "detail_par_photo": ml_result.get("detail_par_photo", {}),
+                "moyenne_photos": ml_result.get("moyenne_photos"),
+                "photos_non_concluantes": ml_result.get("photos_non_concluantes", []),
+                "toutes_photos_non_concluantes": toutes_photos_non_concluantes,
             },
             "glcm_texture": {k: round(v, 4) for k, v in glcm.items()} if glcm else {},
             "signature_marque": brand_sig,
