@@ -758,9 +758,26 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   const [model,setModel]=useState("");
   const [price,setPrice]=useState("");
   const [analyzing,setAnalyzing]=useState(false);
+  const [verifError,setVerifError]=useState("");
   const [progress,setProgress]=useState(0);
   const [pLabel,setPLabel]=useState("");
   const [articleId,setArticleId]=useState(null);
+
+  // Les photos de téléphone font souvent 4000 px et plusieurs Mo : on les
+  // réduit à 1600 px (JPEG) avant l'envoi, ce qui allège l'analyse et la
+  // mémoire du serveur. L'analyse exige au moins 200 px, la marge est large.
+  const resizePhoto = (dataUrl) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1600, scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = () => reject(new Error("format"));
+    img.src = dataUrl;
+  });
 
   const handleFile = (idx) => {
     const input = document.createElement("input");
@@ -768,7 +785,15 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
     input.onchange = (e) => {
       const file = e.target.files[0]; if(!file) return;
       const reader = new FileReader();
-      reader.onload = (ev) => { const n=[...photos]; n[idx]=ev.target.result; setPhotos(n); };
+      reader.onload = async (ev) => {
+        try {
+          const small = await resizePhoto(ev.target.result);
+          setPhotos(prev => { const n=[...prev]; n[idx]=small; return n; });
+          setVerifError("");
+        } catch {
+          setVerifError("Cette photo n'a pas pu être lue. Utilisez une photo au format JPEG ou PNG (les photos HEIC d'iPhone ne sont pas prises en charge).");
+        }
+      };
       reader.readAsDataURL(file);
     };
     input.click();
@@ -790,7 +815,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
     try {
       const res = await api(`/articles/?owner_id=${user?user.id:1}`, { method:"POST", body:{ title:model||"Article de luxe", brand, model, category:cat, description:"Article mis en location via LUXLOC", price_per_day:parseFloat(price)||85, retail_price:parseFloat(price)*15||1200, condition:"Excellent" }});
       setArticleId(res.id);
-      showToast(`✓ Article #${res.id} créé via API`);
+      showToast("✓ Article enregistré");
       setStep(1);
     } catch(e) { showToast("✗ Erreur: "+e.message); }
   };
@@ -814,9 +839,11 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
       });
       if(window._luxlocPhotos===undefined) window._luxlocPhotos={};
       window._luxlocPhotos[articleId] = photos[0];
-      showToast("✓ Photos + facture envoyées — analyse en cours");
-      setStep(2);
-    } catch(e) { showToast("✗ Erreur: "+e.message); }
+      return true;
+    } catch(e) {
+      setVerifError("Les photos n'ont pas pu être envoyées : " + e.message + ". Vérifiez votre connexion puis relancez.");
+      return false;
+    }
   };
 
   const startAnalysis = async () => {
@@ -829,7 +856,24 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
       clearInterval(iv); setProgress(100); setPLabel("Terminé !");
       showToast(`✓ Vérification terminée — Score: ${res.scores.global}`);
       setTimeout(()=>{ setVerifResult(res); setScreen(SCREENS.OWNER_RESULT); },800);
-    } catch(e) { clearInterval(iv); showToast("✗ Erreur: "+e.message); }
+    } catch(e) {
+      // On revient aux photos avec la raison affichée, au lieu de laisser
+      // l'écran figé sur son pourcentage.
+      clearInterval(iv);
+      setAnalyzing(false); setProgress(0); setStep(2);
+      window.scrollTo({top:0,behavior:"smooth"});
+      setVerifError(e.message === "Failed to fetch" || e.message === "Bad Gateway" || e.message === "Service Unavailable"
+        ? "Le serveur n'a pas répondu pendant l'analyse. Patientez quelques secondes puis relancez la vérification."
+        : "La vérification n'a pas abouti : " + e.message);
+    }
+  };
+
+  const launchVerification = async () => {
+    setVerifError("");
+    const ok = await uploadPhotosAndDocs();
+    if (!ok) return;
+    setStep(3);
+    startAnalysis();
   };
 
   const photoLabels=["Vue d'ensemble","Logo / Marque","Étiquette intérieure","Coutures & finitions"];
@@ -898,6 +942,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
       {/* STEP 2 — Photos de l'article */}
       {step===2&&!analyzing&&<div>
         <p style={{fontSize:13,color:"rgba(26,22,20,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Lumière naturelle, fond neutre de préférence.</p>
+        {verifError&&<div role="alert" style={{fontSize:13,lineHeight:1.5,color:"#A33A34",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",padding:"12px 14px",marginBottom:20}}>{verifError}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
           {photoLabels.map((label,i)=><div key={i} onClick={()=>handleFile(i)} style={{cursor:"pointer",aspectRatio:"4/3",border:`1px ${photos[i]?"solid rgba(45,106,79,0.6)":"dashed rgba(26,22,20,0.15)"}`,background:photos[i]?"rgba(45,106,79,0.04)":"rgba(26,22,20,0.02)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all 0.3s",overflow:"hidden",position:"relative"}}>
             {photos[i]?<>
@@ -912,7 +957,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
           </div>)}
         </div>
         <div style={{fontSize:11,color:nbPhotos>=3?"#5DCAA5":"rgba(26,22,20,0.3)",marginBottom:12,textAlign:"center"}}>{nbPhotos}/4 photos ajoutées {nbPhotos>=3?"— prêt pour l'analyse":""}</div>
-        <button onClick={()=>{uploadPhotosAndDocs().then(()=>{setStep(3);startAnalysis();});}} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(26,22,20,0.08)",color:nbPhotos>=3?"#1A1614":"rgba(26,22,20,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
+        <button onClick={launchVerification} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(26,22,20,0.08)",color:nbPhotos>=3?"#1A1614":"rgba(26,22,20,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
       </div>}
 
       {/* STEP 3 — Analyse */}
