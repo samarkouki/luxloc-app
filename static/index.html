@@ -84,7 +84,13 @@ async function api(path, opts = {}) {
     ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || res.statusText); }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    // En HTTP/2 (Railway), statusText est vide : sans message du serveur,
+    // on affiche au moins le code pour ne jamais laisser un message vide.
+    const detail = typeof e.detail === "string" ? e.detail : null;
+    throw new Error(detail || res.statusText || (res.status >= 500 ? `erreur du serveur (code ${res.status})` : `erreur ${res.status}`));
+  }
   return res.json();
 }
 
@@ -941,7 +947,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
 
       {/* STEP 2 — Photos de l'article */}
       {step===2&&!analyzing&&<div>
-        <p style={{fontSize:13,color:"rgba(26,22,20,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Lumière naturelle, fond neutre de préférence.</p>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Toutes les conditions sont acceptées ; une lumière naturelle et un fond neutre donnent un résultat plus fiable. Si les photos sont trop sombres ou floues, un expert examinera l'article.</p>
         {verifError&&<div role="alert" style={{fontSize:13,lineHeight:1.5,color:"#A33A34",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",padding:"12px 14px",marginBottom:20}}>{verifError}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
           {photoLabels.map((label,i)=><div key={i} onClick={()=>handleFile(i)} style={{cursor:"pointer",aspectRatio:"4/3",border:`1px ${photos[i]?"solid rgba(45,106,79,0.6)":"dashed rgba(26,22,20,0.15)"}`,background:photos[i]?"rgba(45,106,79,0.04)":"rgba(26,22,20,0.02)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all 0.3s",overflow:"hidden",position:"relative"}}>
@@ -1012,7 +1018,9 @@ function OwnerResult({setScreen,verifResult}){
       </div>}
       {verifResult.status==="review" && <div style={{border:"1px solid rgba(239,159,39,0.35)",padding:24,marginBottom:24,background:"rgba(239,159,39,0.06)"}}>
         <div style={{fontSize:12,letterSpacing:2,color:"#EF9F27",marginBottom:8}}>EN ATTENTE DE VALIDATION EXPERT</div>
-        <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6}}>Le score se situe dans la zone d'incertitude. Conformément au pipeline, l'article est routé vers un expert humain qui tranche avant la mise en location — vous serez informé dès qu'une décision sera prise.</p>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6}}>{verifResult.analysis?.qualite_photos_insuffisante
+          ? "Vos photos sont trop sombres, floues ou peu contrastées pour une décision automatique fiable. Un expert humain examine l'article avant sa mise en location : vous serez informé de sa décision."
+          : "Le score se situe dans la zone d'incertitude. Un expert humain examine l'article avant sa mise en location : vous serez informé de sa décision."}</p>
       </div>}
       <div style={{display:"flex",gap:12}}>
         <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>VOIR LE CATALOGUE</button>

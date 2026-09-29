@@ -60,16 +60,21 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     has_real_images = len(images) > 0
 
     # ═══ ÉTAPE 1 — PRÉTRAITEMENT & CONTRÔLE QUALITÉ ═══
+    # On ne refuse plus un article pour des conditions de prise de vue
+    # imparfaites (lumière, fond, léger flou) : l'analyse va au bout, et si
+    # aucune photo n'est de bonne qualité, l'article part en examen expert
+    # (étape 5). Seule une résolution inexploitable (< 200 px) bloque.
     quality_reports = {}
+    qualite_insuffisante = False
     if has_real_images:
         for ptype, img in images.items():
             quality_reports[ptype] = cv.quality_check(img)
-        any_passed = any(q["passed"] for q in quality_reports.values())
-        if not any_passed:
+        if not any(q["resolution_ok"] for q in quality_reports.values()):
             raise HTTPException(
                 status_code=400,
-                detail="Photos de qualité insuffisante (flou, sous-exposition ou résolution trop faible)"
+                detail="Photos trop petites pour être analysées (moins de 200 pixels de côté)"
             )
+        qualite_insuffisante = not any(q["passed"] for q in quality_reports.values())
 
     # Image de référence pour chaque tête d'analyse
     overview = images.get("overview") or _first(images)
@@ -183,7 +188,9 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     # EfficientNet, on ne dispose d'aucune preuve visuelle exploitable :
     # l'article part systématiquement en examen expert, jamais en
     # validation automatique (ni en rejet automatique, faute de preuve).
-    if toutes_photos_non_concluantes:
+    # Même règle quand aucune photo n'a passé le contrôle qualité : les
+    # scores visuels ne sont pas fiables, un expert tranche.
+    if toutes_photos_non_concluantes or qualite_insuffisante:
         status = VerificationStatus.REVIEW
     elif score_global >= 0.85:
         status = VerificationStatus.VERIFIED
@@ -231,6 +238,7 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
             "mode": "computer_vision_reelle" if has_real_images else "fallback_metadata",
             "images_analysees": list(images.keys()),
             "controle_qualite": quality_reports,
+            "qualite_photos_insuffisante": qualite_insuffisante,
             "modele_ml": {
                 "score_authenticite": ml_result["score"],
                 "source": ml_result["source"],
