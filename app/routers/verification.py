@@ -28,6 +28,7 @@ from app.services import brand_signature as brand_sig_mod
 from app.ml import predict as ml_predict
 from app.ml import authenticator as efficientnet
 import time
+import traceback
 
 router = APIRouter()
 
@@ -94,13 +95,26 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     # toutes le sont, le routage vers l'expert est forcé à l'étape 5, quel
     # que soit le score pondéré.
     toutes_photos_non_concluantes = False
+    ml_result = None
+    erreur_efficientnet = None
+    detail_par_photo = None
     if overview and efficientnet.is_available():
-        detail_par_photo = {}
-        for ptype in ("overview", "logo", "stitching", "label"):
-            img = images.get(ptype)
-            if img is not None:
-                detail_par_photo[ptype] = efficientnet.predict_one(img)
+        # Une panne pendant la prédiction (et pas seulement au chargement)
+        # ne doit jamais faire échouer la vérification : on retombe sur le
+        # Random Forest et la cause part dans les journaux.
+        try:
+            detail_par_photo = {}
+            for ptype in ("overview", "logo", "stitching", "label"):
+                img = images.get(ptype)
+                if img is not None:
+                    detail_par_photo[ptype] = efficientnet.predict_one(img)
+        except Exception as e:
+            erreur_efficientnet = f"{type(e).__name__}: {e}"
+            print(f"[efficientnet] échec de l'analyse, repli sur le Random Forest — {erreur_efficientnet}")
+            traceback.print_exc()
+            detail_par_photo = None
 
+    if detail_par_photo is not None:
         concluantes = {k: v for k, v in detail_par_photo.items() if v["concluant"]}
         non_concluantes = [k for k in detail_par_photo if k not in concluantes]
 
@@ -127,6 +141,8 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     elif overview:
         ml_result = ml_predict.predict_authenticity(overview)
         score_cnn = ml_result["score"]
+        if erreur_efficientnet:
+            ml_result["erreur_efficientnet"] = erreur_efficientnet
     else:
         ml_result = {"score": _fallback("cnn", article), "source": "fallback_metadata",
                      "model_version": "fallback", "features": {}}
@@ -248,6 +264,7 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
                 "moyenne_photos": ml_result.get("moyenne_photos"),
                 "photos_non_concluantes": ml_result.get("photos_non_concluantes", []),
                 "toutes_photos_non_concluantes": toutes_photos_non_concluantes,
+                "erreur_efficientnet": erreur_efficientnet,
             },
             "glcm_texture": {k: round(v, 4) for k, v in glcm.items()} if glcm else {},
             "signature_marque": brand_sig,
