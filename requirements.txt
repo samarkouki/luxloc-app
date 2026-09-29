@@ -4,8 +4,12 @@ sqlalchemy
 pydantic
 python-multipart
 pillow
-numpy
-scikit-learn
+# Versions figées : torch 2.2.2 ne fonctionne pas avec numpy 2 (le modèle se
+# charge mais chaque prédiction échoue avec « Numpy is not available »), et
+# le Random Forest de repli a été entraîné avec scikit-learn 1.5.1.
+numpy==1.26.4
+scipy==1.13.0
+scikit-learn==1.5.1
 joblib
 psycopg2-binary
 psycopg[binary]
