@@ -12,6 +12,7 @@ luxloc.db
 venv/
 env/
 luxloc/
+luxlocVenv/
 
 # Secrets
 .env

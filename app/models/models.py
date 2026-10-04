@@ -58,6 +58,7 @@ class User(Base):
     phone = Column(String)
     role = Column(Enum(UserRole), default=UserRole.BOTH)
     is_verified = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)  # False = compte suspendu par un admin
     trust_score = Column(Float, default=0.5)  # Score de confiance 0-1
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -83,6 +84,8 @@ class Article(Base):
     retail_price = Column(Float)  # Prix neuf pour cohérence
     condition = Column(String, default="Excellent")
     is_available = Column(Boolean, default=False)  # Disponible après vérification
+    is_archived = Column(Boolean, default=False)   # Archivé par un admin — masqué du catalogue
+    archived_at = Column(DateTime, nullable=True)
     invoice_data = Column(Text)        # Facture d'achat (base64) — preuve d'achat
     id_document_data = Column(Text)    # Pièce d'identité du propriétaire (base64)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -196,3 +199,39 @@ class ReturnRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     transaction = relationship("Transaction", back_populates="return_record")
+
+
+# ════════════════════════════════════
+# JOURNAL D'ADMINISTRATION
+# ════════════════════════════════════
+class AdminAction(Base):
+    """
+    Trace chaque action prise depuis la console d'administration :
+    qui (admin_id), quoi (action), sur quoi (cible_type/cible_id), et le
+    détail (motif de rejet, ancien/nouveau statut, etc.).
+    """
+    __tablename__ = "admin_actions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    action = Column(String, nullable=False)       # ex: "archive_article", "suspend_user"
+    cible_type = Column(String, nullable=False)   # ex: "article", "user", "transaction"
+    cible_id = Column(Integer, nullable=True)
+    detail = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PasswordResetToken(Base):
+    """
+    Lien de réinitialisation de mot de passe envoyé par e-mail. On ne stocke
+    que l'empreinte SHA-256 du jeton : une fuite de la base ne permet pas de
+    réutiliser un lien. Usage unique, valable 30 minutes.
+    """
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token_hash = Column(String, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -29,10 +29,20 @@ import os
 import json
 import numpy as np
 from PIL import Image, ImageFilter
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn.dummy import DummyClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             f1_score, confusion_matrix, classification_report)
+                             f1_score, confusion_matrix, classification_report,
+                             roc_auc_score, roc_curve)
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import joblib
 
 from app.ml.features import extract_features, FEATURE_NAMES
@@ -173,6 +183,88 @@ def build_dataset(n_per_class=300):
 
 
 # ════════════════════════════════════════
+# ÉTUDE COMPARATIVE DE MODÈLES
+# ════════════════════════════════════════
+
+def comparative_study(X_train, X_test, y_train, y_test):
+    """
+    Entraîne et évalue plusieurs modèles sur le même split, génère une
+    courbe ROC comparée, et renvoie les résultats triés par F1.
+    Le Random Forest reste le modèle de production ; cette étude prouve
+    que ce choix est justifié face à d'autres approches.
+    """
+    modeles = {
+        "Random Forest": make_pipeline(
+            StandardScaler(),
+            RandomForestClassifier(n_estimators=200, max_depth=12,
+                                   min_samples_leaf=3, random_state=42, n_jobs=-1)),
+        "Gradient Boosting": make_pipeline(
+            StandardScaler(),
+            GradientBoostingClassifier(n_estimators=150, random_state=42)),
+        "SVM (noyau RBF)": make_pipeline(
+            StandardScaler(),
+            SVC(kernel="rbf", probability=True, random_state=42)),
+        "Réseau de neurones (MLP)": make_pipeline(
+            StandardScaler(),
+            MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=1000, random_state=42)),
+        "Régression logistique": make_pipeline(
+            StandardScaler(),
+            LogisticRegression(max_iter=1000, random_state=42)),
+        "Référence naïve": make_pipeline(
+            DummyClassifier(strategy="most_frequent")),
+    }
+
+    couleurs = {
+        "Random Forest": "#C9A84C",
+        "Gradient Boosting": "#6D2E46",
+        "SVM (noyau RBF)": "#2D6A4F",
+        "Réseau de neurones (MLP)": "#4A90D9",
+        "Régression logistique": "#999999",
+    }
+
+    resultats = []
+    plt.figure(figsize=(7, 6))
+
+    for nom, clf in modeles.items():
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_test)
+        try:
+            proba = clf.predict_proba(X_test)[:, 1]
+            auc = float(roc_auc_score(y_test, proba))
+            fpr, tpr, _ = roc_curve(y_test, proba)
+            if nom != "Référence naïve":
+                plt.plot(fpr, tpr, label=f"{nom} (AUC={auc:.3f})",
+                         color=couleurs.get(nom, "#333"), linewidth=2)
+        except Exception:
+            auc = None
+
+        resultats.append({
+            "nom": nom,
+            "accuracy": round(float(accuracy_score(y_test, pred)), 4),
+            "precision": round(float(precision_score(y_test, pred, zero_division=0)), 4),
+            "recall": round(float(recall_score(y_test, pred, zero_division=0)), 4),
+            "f1_score": round(float(f1_score(y_test, pred, zero_division=0)), 4),
+            "auc": round(auc, 4) if auc is not None else None,
+        })
+
+    # Ligne diagonale (classifieur aléatoire)
+    plt.plot([0, 1], [0, 1], "--", color="#ccc", label="Aléatoire (AUC=0.500)")
+    plt.xlabel("Taux de faux positifs")
+    plt.ylabel("Taux de vrais positifs")
+    plt.title("Courbes ROC — comparaison des modèles")
+    plt.legend(loc="lower right", fontsize=9)
+    plt.grid(alpha=0.3)
+    roc_path = os.path.join(MODEL_DIR, "roc_comparison.png")
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    plt.savefig(roc_path, dpi=100, bbox_inches="tight")
+    plt.close()
+
+    # Trie par F1 décroissant
+    resultats.sort(key=lambda r: r["f1_score"], reverse=True)
+    return resultats, roc_path
+
+
+# ════════════════════════════════════════
 # ENTRAÎNEMENT & ÉVALUATION
 # ════════════════════════════════════════
 
@@ -205,6 +297,10 @@ def train():
         zip(FEATURE_NAMES, model.feature_importances_),
         key=lambda t: t[1], reverse=True)
 
+    # Étude comparative de modèles + courbe ROC
+    print("      Étude comparative (6 modèles + courbe ROC)…")
+    comparaison, roc_path = comparative_study(X_train, X_test, y_train, y_test)
+
     metrics = {
         "model": "RandomForestClassifier",
         "n_estimators": 200,
@@ -228,6 +324,7 @@ def train():
             {"feature": n, "importance": round(float(i), 4)}
             for n, i in importances
         ],
+        "comparaison_modeles": comparaison,
     }
 
     print("5/5 — Sauvegarde du modèle et des métriques…")
@@ -254,6 +351,15 @@ def train():
     print("  Features les plus discriminantes :")
     for n, i in importances[:5]:
         print(f"    {n:<20} {i:.1%}")
+    print("=" * 52)
+
+    print("\n  ÉTUDE COMPARATIVE DE MODÈLES :")
+    print(f"    {'Modèle':<28}{'Acc':>7}{'F1':>7}{'AUC':>7}")
+    print("    " + "-" * 49)
+    for r in comparaison:
+        auc = f"{r['auc']:.3f}" if r['auc'] else "  —  "
+        print(f"    {r['nom']:<28}{r['accuracy']:>7.1%}{r['f1_score']:>7.1%}{auc:>7}")
+    print(f"\n  Courbe ROC sauvegardée : {roc_path}")
     print("=" * 52)
     print(f"\nModèle sauvegardé : {MODEL_PATH}")
     return metrics

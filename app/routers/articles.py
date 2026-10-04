@@ -2,9 +2,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Body
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from datetime import datetime
 from app.database import get_db
-from app.schemas.schemas import ArticleCreate, ArticleResponse, CategoryEnum
-from app.models.models import Article, ArticlePhoto, Verification, VerificationStatus
+from app.schemas.schemas import ArticleCreate, ArticleResponse, ArticleUpdate, CategoryEnum
+from app.models.models import Article, ArticlePhoto, Verification, VerificationStatus, User
+from app.dependencies import require_admin, log_admin_action
 
 router = APIRouter()
 
@@ -42,7 +44,9 @@ def list_articles(
     db: Session = Depends(get_db),
 ):
     """Catalogue avec filtres (locataire)"""
-    query = db.query(Article)
+    # Un article archivé par un admin ne doit plus jamais apparaître ici,
+    # quels que soient les autres filtres.
+    query = db.query(Article).filter(Article.is_archived == False)
 
     if verified_only:
         query = query.filter(Article.is_available == True)
@@ -180,42 +184,50 @@ def platform_stats(db: Session = Depends(get_db)):
     from sqlalchemy import func
     from app.models.models import Transaction, User
 
-    total_articles = db.query(Article).count()
-    total_users = db.query(User).count()
+    # Les articles supprimés (archivés) sortent de toutes les statistiques.
+    actifs = db.query(Article.id).filter(Article.is_archived == False)
+    total_articles = actifs.count()
+    total_users = db.query(User).filter(User.is_active == True).count()
     total_transactions = db.query(Transaction).count()
 
-    # Répartition par statut de vérification
-    verified = db.query(Verification).filter(
-        Verification.status == VerificationStatus.VERIFIED).count()
-    review = db.query(Verification).filter(
-        Verification.status == VerificationStatus.REVIEW).count()
-    rejected = db.query(Verification).filter(
-        Verification.status == VerificationStatus.REJECTED).count()
+    # Chaque relance d'analyse ajoute une ligne de vérification : on ne
+    # compte que la plus récente de chaque article, sinon les relances
+    # gonflent les totaux.
+    derniere = (db.query(func.max(Verification.id))
+                .filter(Verification.article_id.in_(actifs))
+                .group_by(Verification.article_id))
+    latest = db.query(Verification).filter(Verification.id.in_(derniere)).all()
 
-    # Taux de vérification automatique
-    total_verifs = verified + review + rejected
-    taux_auto = round(verified / total_verifs * 100, 1) if total_verifs else 0
+    # reviewed_by est renseigné quand un expert tranche ; une validation
+    # sans reviewed_by vient donc directement du pipeline IA.
+    auto = sum(1 for v in latest if v.status == VerificationStatus.VERIFIED and not v.reviewed_by)
+    expert = sum(1 for v in latest if v.status == VerificationStatus.VERIFIED and v.reviewed_by)
+    review = sum(1 for v in latest if v.status == VerificationStatus.REVIEW)
+    rejected = sum(1 for v in latest if v.status == VerificationStatus.REJECTED)
+    verified = auto + expert
 
-    # Score IA moyen (sur les vérifications existantes)
-    avg_score = db.query(func.avg(Verification.score_global)).scalar()
-    avg_score = round(avg_score, 3) if avg_score else 0
+    total_verifs = len(latest)
+    taux_auto = round(auto / total_verifs * 100, 1) if total_verifs else 0
 
-    # Répartition par catégorie
-    cat_rows = db.query(
-        Article.category, func.count(Article.id)
-    ).group_by(Article.category).all()
+    scores = [v.score_global for v in latest if v.score_global is not None]
+    avg_score = round(sum(scores) / len(scores), 3) if scores else 0
+
+    cat_rows = (db.query(Article.category, func.count(Article.id))
+                .filter(Article.is_archived == False)
+                .group_by(Article.category).all())
     par_categorie = {
         (c.value if hasattr(c, "value") else c): n for c, n in cat_rows
     }
 
-    # Répartition par marque (top marques)
-    brand_rows = db.query(
-        Article.brand, func.count(Article.id)
-    ).group_by(Article.brand).order_by(func.count(Article.id).desc()).all()
+    brand_rows = (db.query(Article.brand, func.count(Article.id))
+                  .filter(Article.is_archived == False)
+                  .group_by(Article.brand)
+                  .order_by(func.count(Article.id).desc()).all())
     par_marque = {b: n for b, n in brand_rows}
 
-    # Valeur totale du catalogue (somme des prix retail)
-    valeur_catalogue = db.query(func.sum(Article.retail_price)).scalar() or 0
+    # Valeur neuve du catalogue (somme des prix de vente d'origine)
+    valeur_catalogue = (db.query(func.sum(Article.retail_price))
+                        .filter(Article.is_archived == False).scalar() or 0)
 
     # Revenus de commission (20% du total des transactions)
     revenus_commission = db.query(func.sum(Transaction.commission)).scalar() or 0
@@ -226,8 +238,11 @@ def platform_stats(db: Session = Depends(get_db)):
         "total_locations": total_transactions,
         "verification": {
             "verifies": verified,
+            "verifies_auto": auto,
+            "verifies_expert": expert,
             "en_examen": review,
             "rejetes": rejected,
+            "sans_analyse": total_articles - total_verifs,
             "taux_auto_validation": taux_auto,
         },
         "score_ia_moyen": avg_score,
@@ -236,6 +251,62 @@ def platform_stats(db: Session = Depends(get_db)):
         "valeur_catalogue": round(valeur_catalogue, 0),
         "revenus_commission": round(revenus_commission, 2),
     }
+
+
+@router.patch("/{article_id}", response_model=ArticleResponse)
+def update_article(article_id: int, payload: ArticleUpdate,
+                    admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Modifier un article (administration) : titre, marque, modèle, catégorie, prix, état, disponibilité."""
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    changes = payload.dict(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(article, field, value)
+
+    if changes:
+        log_admin_action(db, admin.id, "update_article", "article", article.id,
+                          ", ".join(f"{k}={v}" for k, v in changes.items()))
+    db.commit()
+    db.refresh(article)
+    return _enrich_article(article, db)
+
+
+@router.delete("/{article_id}")
+def archive_article(article_id: int, admin: User = Depends(require_admin),
+                     db: Session = Depends(get_db)):
+    """
+    Archive un article (administration). Aucune suppression physique :
+    l'article disparaît du catalogue public mais reste restaurable.
+    """
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    article.is_archived = True
+    article.archived_at = datetime.utcnow()
+    article.is_available = False
+    log_admin_action(db, admin.id, "archive_article", "article", article.id, article.title)
+    db.commit()
+
+    return {"message": "Article archivé", "article_id": article.id, "is_archived": True}
+
+
+@router.post("/{article_id}/restore")
+def restore_article(article_id: int, admin: User = Depends(require_admin),
+                     db: Session = Depends(get_db)):
+    """Désarchive un article (administration) — redevient gérable par son propriétaire."""
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    article.is_archived = False
+    article.archived_at = None
+    log_admin_action(db, admin.id, "restore_article", "article", article.id, article.title)
+    db.commit()
+
+    return {"message": "Article restauré", "article_id": article.id, "is_archived": False}
 
 
 def _enrich_article(article: Article, db: Session) -> dict:

@@ -19,13 +19,16 @@ remplacées par EfficientNet-B4 et un Siamese Network entraînés.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.schemas import VerificationRequest
-from app.models.models import Article, Verification, VerificationStatus, ArticlePhoto
+from app.schemas.schemas import VerificationRequest, ExpertRejectRequest
+from app.models.models import Article, Verification, VerificationStatus, ArticlePhoto, User
+from app.dependencies import require_admin, log_admin_action
 from app.services import cv_analysis as cv
 from app.services import invoice_analysis as inv
 from app.services import brand_signature as brand_sig_mod
 from app.ml import predict as ml_predict
+from app.ml import authenticator as efficientnet
 import time
+import traceback
 
 router = APIRouter()
 
@@ -58,16 +61,21 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     has_real_images = len(images) > 0
 
     # ═══ ÉTAPE 1 — PRÉTRAITEMENT & CONTRÔLE QUALITÉ ═══
+    # On ne refuse plus un article pour des conditions de prise de vue
+    # imparfaites (lumière, fond, léger flou) : l'analyse va au bout, et si
+    # aucune photo n'est de bonne qualité, l'article part en examen expert
+    # (étape 5). Seule une résolution inexploitable (< 200 px) bloque.
     quality_reports = {}
+    qualite_insuffisante = False
     if has_real_images:
         for ptype, img in images.items():
             quality_reports[ptype] = cv.quality_check(img)
-        any_passed = any(q["passed"] for q in quality_reports.values())
-        if not any_passed:
+        if not any(q["resolution_ok"] for q in quality_reports.values()):
             raise HTTPException(
                 status_code=400,
-                detail="Photos de qualité insuffisante (flou, sous-exposition ou résolution trop faible)"
+                detail="Photos trop petites pour être analysées (moins de 200 pixels de côté)"
             )
+        qualite_insuffisante = not any(q["passed"] for q in quality_reports.values())
 
     # Image de référence pour chaque tête d'analyse
     overview = images.get("overview") or _first(images)
@@ -75,12 +83,66 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     stitch_img = images.get("stitching") or overview
     label_img = images.get("label") or overview
 
-    # ═══ ÉTAPE 2 — SCORE GLOBAL (modèle ML entraîné) ═══
-    # Le score global est désormais produit par le Random Forest entraîné
-    # (app.ml). Si le modèle n'est pas disponible, repli heuristique.
-    if overview:
+    # ═══ ÉTAPE 2 — SCORE GLOBAL (authenticité) ═══
+    # Le score vient d'EfficientNet-B0 (luxury_authenticator_v1) quand le
+    # modèle a pu être chargé ; sinon repli silencieux sur le Random Forest
+    # historique (app.ml), qui a lui-même un repli heuristique — l'un des
+    # trois niveaux répond toujours. EfficientNet analyse les quatre photos
+    # (pas seulement l'aperçu) : le score retenu est la probabilité la PLUS
+    # BASSE parmi les photos concluantes (confiance >= 0,80) — une seule vue
+    # suspecte doit faire baisser le score. Une photo non concluante ne
+    # compte pas comme preuve d'authenticité et est exclue du calcul ; si
+    # toutes le sont, le routage vers l'expert est forcé à l'étape 5, quel
+    # que soit le score pondéré.
+    toutes_photos_non_concluantes = False
+    ml_result = None
+    erreur_efficientnet = None
+    detail_par_photo = None
+    if overview and efficientnet.is_available():
+        # Une panne pendant la prédiction (et pas seulement au chargement)
+        # ne doit jamais faire échouer la vérification : on retombe sur le
+        # Random Forest et la cause part dans les journaux.
+        try:
+            detail_par_photo = {}
+            for ptype in ("overview", "logo", "stitching", "label"):
+                img = images.get(ptype)
+                if img is not None:
+                    detail_par_photo[ptype] = efficientnet.predict_one(img)
+        except Exception as e:
+            erreur_efficientnet = f"{type(e).__name__}: {e}"
+            print(f"[efficientnet] échec de l'analyse, repli sur le Random Forest — {erreur_efficientnet}")
+            traceback.print_exc()
+            detail_par_photo = None
+
+    if detail_par_photo is not None:
+        concluantes = {k: v for k, v in detail_par_photo.items() if v["concluant"]}
+        non_concluantes = [k for k in detail_par_photo if k not in concluantes]
+
+        if concluantes:
+            pire = min(concluantes, key=lambda k: concluantes[k]["score"])
+            score_cnn = concluantes[pire]["score"]
+        else:
+            # Aucune photo concluante : score neutre par défaut, le
+            # routage vers l'expert est forcé plus bas (étape 5).
+            score_cnn = 0.5
+            toutes_photos_non_concluantes = True
+
+        ml_result = {
+            "score": round(score_cnn, 4),
+            "source": "efficientnet_b0",
+            "model_version": efficientnet.MODEL_VERSION,
+            "features": {},
+            "detail_par_photo": detail_par_photo,
+            "moyenne_photos": round(
+                sum(v["score"] for v in detail_par_photo.values()) / len(detail_par_photo), 4
+            ) if detail_par_photo else None,
+            "photos_non_concluantes": non_concluantes,
+        }
+    elif overview:
         ml_result = ml_predict.predict_authenticity(overview)
         score_cnn = ml_result["score"]
+        if erreur_efficientnet:
+            ml_result["erreur_efficientnet"] = erreur_efficientnet
     else:
         ml_result = {"score": _fallback("cnn", article), "source": "fallback_metadata",
                      "model_version": "fallback", "features": {}}
@@ -138,8 +200,15 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
 
     processing_time = int((time.time() - start) * 1000)
 
-    # Routing 3 niveaux
-    if score_global >= 0.85:
+    # Routing 3 niveaux — si aucune photo n'a été concluante pour
+    # EfficientNet, on ne dispose d'aucune preuve visuelle exploitable :
+    # l'article part systématiquement en examen expert, jamais en
+    # validation automatique (ni en rejet automatique, faute de preuve).
+    # Même règle quand aucune photo n'a passé le contrôle qualité : les
+    # scores visuels ne sont pas fiables, un expert tranche.
+    if toutes_photos_non_concluantes or qualite_insuffisante:
+        status = VerificationStatus.REVIEW
+    elif score_global >= 0.85:
         status = VerificationStatus.VERIFIED
     elif score_global >= 0.40:
         status = VerificationStatus.REVIEW
@@ -185,11 +254,17 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
             "mode": "computer_vision_reelle" if has_real_images else "fallback_metadata",
             "images_analysees": list(images.keys()),
             "controle_qualite": quality_reports,
+            "qualite_photos_insuffisante": qualite_insuffisante,
             "modele_ml": {
                 "score_authenticite": ml_result["score"],
                 "source": ml_result["source"],
                 "version": ml_result["model_version"],
                 "features_extraites": ml_result["features"],
+                "detail_par_photo": ml_result.get("detail_par_photo", {}),
+                "moyenne_photos": ml_result.get("moyenne_photos"),
+                "photos_non_concluantes": ml_result.get("photos_non_concluantes", []),
+                "toutes_photos_non_concluantes": toutes_photos_non_concluantes,
+                "erreur_efficientnet": erreur_efficientnet,
             },
             "glcm_texture": {k: round(v, 4) for k, v in glcm.items()} if glcm else {},
             "signature_marque": brand_sig,
@@ -208,19 +283,25 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
 
 
 @router.post("/{article_id}/expert-validate")
-def expert_validate(article_id: int, db: Session = Depends(get_db)):
+def expert_validate(article_id: int, admin: User = Depends(require_admin),
+                     db: Session = Depends(get_db)):
     """
     Validation par un expert humain — étape de routing pour les articles
     en statut 'review' (score 0.40-0.84). L'expert tranche : l'article
     est validé, sa dernière vérification passe à VERIFIED et il devient
     disponible à la location.
 
-    En production, cette action serait réservée à un compte expert
-    authentifié et tracée.
+    Réservé à un compte admin (voir app.dependencies.require_admin), et
+    refusé si l'appelant est le propriétaire de l'article : un
+    propriétaire ne doit jamais pouvoir valider sa propre pièce, cela
+    viderait de sens le routage vers un expert humain.
     """
     article = db.query(Article).filter(Article.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article non trouvé")
+    if article.owner_id == admin.id:
+        raise HTTPException(status_code=403,
+                            detail="Un propriétaire ne peut pas valider son propre article")
 
     verif = (db.query(Verification)
              .filter(Verification.article_id == article_id)
@@ -233,7 +314,10 @@ def expert_validate(article_id: int, db: Session = Depends(get_db)):
                             detail="Article rejeté — non validable par expert")
 
     verif.status = VerificationStatus.VERIFIED
+    verif.reviewed_by = f"admin:{admin.id}"
     article.is_available = True
+    log_admin_action(db, admin.id, "validate_article", "article", article.id,
+                      f"« {article.title} » validé par un expert")
     db.commit()
 
     return {
@@ -244,36 +328,106 @@ def expert_validate(article_id: int, db: Session = Depends(get_db)):
     }
 
 
+@router.post("/{article_id}/expert-reject")
+def expert_reject(article_id: int, payload: ExpertRejectRequest,
+                   admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """
+    Rejet motivé par un expert humain — pendant du expert-validate pour
+    les articles en 'review' qui ne passent pas le contrôle. Le motif est
+    obligatoire et conservé dans le journal d'administration.
+    """
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+    if article.owner_id == admin.id:
+        raise HTTPException(status_code=403,
+                            detail="Un propriétaire ne peut pas rejeter son propre article")
+
+    verif = (db.query(Verification)
+             .filter(Verification.article_id == article_id)
+             .order_by(Verification.id.desc())
+             .first())
+    if not verif:
+        raise HTTPException(status_code=400, detail="Aucune vérification à traiter")
+
+    verif.status = VerificationStatus.REJECTED
+    verif.reviewed_by = f"admin:{admin.id}"
+    article.is_available = False
+    log_admin_action(db, admin.id, "reject_article", "article", article.id, payload.motif)
+    db.commit()
+
+    return {
+        "message": "Article rejeté par l'expert",
+        "article_id": article_id,
+        "status": "rejected",
+        "motif": payload.motif,
+    }
+
+
+@router.post("/{article_id}/relaunch")
+def relaunch_verification(article_id: int, admin: User = Depends(require_admin),
+                           db: Session = Depends(get_db)):
+    """Relance le pipeline de vérification IA sur un article déjà soumis."""
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+
+    # photo_ids n'est en réalité pas exploité par launch_verification, qui
+    # relit les photos réelles depuis la base à partir de l'article_id —
+    # on ne le renseigne ici que pour satisfaire la validation du schéma.
+    request = VerificationRequest(article_id=article_id, photo_ids=[1, 2, 3])
+    result = launch_verification(request, db)
+    log_admin_action(db, admin.id, "relaunch_verification", "article", article.id,
+                      f"Nouveau statut : {result['status']}")
+    db.commit()
+    return result
+
+
 @router.get("/model/info")
 def get_model_info():
     """
-    Renvoie la fiche du modèle ML de détection de contrefaçon :
-    métriques d'évaluation, features utilisées, importance des features.
-    Utile pour la transparence et la présentation du modèle.
+    Fiche du modèle produisant le score d'authenticité de l'étape 2 —
+    EfficientNet-B0, qui a remplacé le Random Forest (voir MODELES.md pour
+    la comparaison complète). Lit metrics.json sans jamais déclencher le
+    chargement du modèle lui-même : cette fiche reste consultable même
+    avant la première vérification.
     """
-    info = ml_predict.model_info()
+    info = efficientnet.model_info()
     if not info:
         return {
             "model_disponible": False,
-            "message": "Modèle non entraîné — exécuter : python -m app.ml.train",
+            "message": "Fiche modèle indisponible — metrics.json absent de luxury_authenticator_v1/models/.",
         }
+
+    cm = info["confusion_matrix"]["matrix"]  # [[fake→fake, fake→real], [real→fake, real→real]]
     return {
         "model_disponible": True,
-        "modele": info["model"],
+        "architecture": "EfficientNet-B0 (fine-tuné)",
+        "version": efficientnet.MODEL_VERSION,
         "jeu_de_donnees": {
-            "taille_totale": info["dataset_size"],
-            "entrainement": info["train_size"],
-            "test": info["test_size"],
+            "taille_test": info["test_images"],
         },
         "metriques": {
             "accuracy": info["accuracy"],
             "precision": info["precision"],
             "recall": info["recall"],
             "f1_score": info["f1_score"],
-            "f1_validation_croisee": f"{info['cv_f1_mean']} (+/- {info['cv_f1_std']})",
+            "roc_auc": info["roc_auc"],
         },
-        "matrice_confusion": info["confusion_matrix"],
-        "importance_features": info["feature_importances"],
+        "matrice_confusion": {
+            "contrefacons_detectees": cm[0][0],
+            "contrefacons_classees_authentiques": cm[0][1],
+            "authentiques_rejetes_a_tort": cm[1][0],
+            "authentiques_valides": cm[1][1],
+        },
+        # Comparaison déjà réalisée sur le même jeu de test réel (235 images) —
+        # voir MODELES.md pour la méthode complète et les limites. Le chiffre
+        # du Random Forest n'est pas recalculé ici, ce modèle n'étant plus en
+        # service pour ce score.
+        "comparaison_ancien_modele": {
+            "random_forest_roc_auc": 0.534,
+            "efficientnet_roc_auc": round(info["roc_auc"], 4),
+        },
     }
 
 

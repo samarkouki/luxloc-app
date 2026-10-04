@@ -67,12 +67,6 @@
       box-shadow:0 16px 40px rgba(26,22,20,0.15);
       animation:slideIn .4s cubic-bezier(.2,.8,.2,1);
     }
-    .api-badge{
-      display:inline-block;padding:3px 9px;
-      background:rgba(45,106,79,0.12);border:1px solid rgba(45,106,79,0.4);
-      color:#1f5a3d;font-size:9px;letter-spacing:1px;margin-left:8px;
-      font-weight:600;border-radius:5px;
-    }
   </style>
 </head>
 <body>
@@ -89,11 +83,17 @@ async function api(path, opts = {}) {
     ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || res.statusText); }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    // En HTTP/2 (Railway), statusText est vide : sans message du serveur,
+    // on affiche au moins le code pour ne jamais laisser un message vide.
+    const detail = typeof e.detail === "string" ? e.detail : null;
+    throw new Error(detail || res.statusText || (res.status >= 500 ? `erreur du serveur (code ${res.status})` : `erreur ${res.status}`));
+  }
   return res.json();
 }
 
-const SCREENS = { AUTH:"auth", LANDING:"landing", OWNER_VERIFY:"owner_verify", OWNER_RESULT:"owner_result", OWNER_DASHBOARD:"owner_dashboard", RENTER_BROWSE:"renter_browse", RENTER_DETAIL:"renter_detail", RENTER_PAYMENT:"renter_payment", RENTER_PROFILE:"renter_profile", RENTER_RETURN:"renter_return", MODEL_IA:"model_ia", STATS:"stats" };
+const SCREENS = { AUTH:"auth", LANDING:"landing", OWNER_VERIFY:"owner_verify", OWNER_RESULT:"owner_result", OWNER_DASHBOARD:"owner_dashboard", RENTER_BROWSE:"renter_browse", RENTER_DETAIL:"renter_detail", RENTER_PAYMENT:"renter_payment", RENTER_PROFILE:"renter_profile", RENTER_RETURN:"renter_return", MODEL_IA:"model_ia", STATS:"stats", ADMIN_CONSOLE:"admin_console" };
 
 // ═══ AUTH SCREEN ═══
 function AuthScreen({onLogin, showToast}) {
@@ -105,6 +105,39 @@ function AuthScreen({onLogin, showToast}) {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("renter");
   const [loading, setLoading] = useState(false);
+  // Lien reçu par e-mail : https://…/?reset=<jeton> ouvre directement le choix du nouveau mot de passe
+  const [resetToken] = useState(()=>new URLSearchParams(window.location.search).get("reset"));
+  const [forgotSent, setForgotSent] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [formError, setFormError] = useState("");
+  useEffect(()=>{ if(resetToken) setMode("reset"); },[resetToken]);
+
+  const handleForgot = async () => {
+    setLoading(true); setFormError("");
+    try { await api("/users/password/forgot", {method:"POST", body:{email}}); setForgotSent(true); }
+    catch(e) { setFormError(e.message); }
+    setLoading(false);
+  };
+
+  const handleReset = async () => {
+    if(newPassword.length<8) return setFormError("Le mot de passe doit contenir au moins 8 caractères.");
+    if(newPassword!==newPassword2) return setFormError("Les deux mots de passe ne sont pas identiques.");
+    setLoading(true); setFormError("");
+    try {
+      await api("/users/password/reset", {method:"POST", body:{token:resetToken, new_password:newPassword}});
+      window.history.replaceState(window.history.state,"",window.location.pathname);
+      showToast("✓ Mot de passe modifié, vous pouvez vous connecter");
+      setNewPassword(""); setNewPassword2(""); setPassword("");
+      setMode("login");
+    } catch(e) { setFormError(e.message); }
+    setLoading(false);
+  };
+
+  const goLogin = () => { setMode("login"); setForgotSent(false); setFormError(""); };
+  const inputStyle = {width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"};
+  const labelStyle = {fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6};
+  const linkStyle = {background:"none",border:"none",padding:0,cursor:"pointer",fontSize:12,color:"#8a6e26",textDecoration:"underline",textUnderlineOffset:3};
 
   const handleLogin = async () => {
     setLoading(true);
@@ -154,6 +187,33 @@ function AuthScreen({onLogin, showToast}) {
         </div>
       </div>
 
+      {(mode==="forgot"||mode==="reset")&&<div style={{display:"grid",gap:16}}>
+        <div>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600,marginBottom:6}}>{mode==="forgot"?"Mot de passe oublié":"Nouveau mot de passe"}</h2>
+          <p style={{fontSize:13,color:"rgba(26,22,20,0.55)",lineHeight:1.6}}>{mode==="forgot"
+            ?"Indiquez l'adresse e-mail de votre compte. Nous vous envoyons un lien pour choisir un nouveau mot de passe."
+            :"Choisissez un nouveau mot de passe d'au moins 8 caractères."}</p>
+        </div>
+
+        {mode==="forgot"&&(forgotSent
+          ? <div role="status" style={{fontSize:13,lineHeight:1.6,padding:"14px 16px",background:"rgba(45,106,79,0.08)",border:"1px solid rgba(45,106,79,0.25)",color:"#1f5a3d"}}>Si un compte existe avec l'adresse {email}, un e-mail vient de partir. Le lien est valable 30 minutes. Pensez à regarder dans les courriers indésirables.</div>
+          : <>
+            <div><label htmlFor="forgot-email" style={labelStyle}>Email</label><input id="forgot-email" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="sophie@luxloc.fr" style={inputStyle}/></div>
+            <button onClick={handleForgot} disabled={loading||!email} style={{padding:"14px 0",border:"none",background:email?"#C9A84C":"rgba(26,22,20,0.08)",color:email?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email?"pointer":"default"}}>{loading?"Envoi…":"ENVOYER LE LIEN"}</button>
+          </>)}
+
+        {mode==="reset"&&<>
+          <div><label htmlFor="reset-pw" style={labelStyle}>Nouveau mot de passe</label><input id="reset-pw" value={newPassword} onChange={e=>setNewPassword(e.target.value)} type="password" autoComplete="new-password" style={inputStyle}/></div>
+          <div><label htmlFor="reset-pw2" style={labelStyle}>Confirmer le mot de passe</label><input id="reset-pw2" value={newPassword2} onChange={e=>setNewPassword2(e.target.value)} type="password" autoComplete="new-password" style={inputStyle}/></div>
+          <button onClick={handleReset} disabled={loading||!newPassword||!newPassword2} style={{padding:"14px 0",border:"none",background:newPassword&&newPassword2?"#C9A84C":"rgba(26,22,20,0.08)",color:newPassword&&newPassword2?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:newPassword&&newPassword2?"pointer":"default"}}>{loading?"Enregistrement…":"ENREGISTRER LE MOT DE PASSE"}</button>
+        </>}
+
+        {formError&&<div role="alert" style={{fontSize:13,color:"#A33A34",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",padding:"10px 14px"}}>{formError}</div>}
+        <div style={{textAlign:"center"}}><button onClick={goLogin} style={linkStyle}>Retour à la connexion</button></div>
+      </div>}
+
+      {(mode==="login"||mode==="register")&&<>
+      {/* Tabs */}
       <div style={{display:"flex",marginBottom:32,borderBottom:"1px solid rgba(26,22,20,0.08)"}}>
         {["login","register"].map(m=>
           <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"12px 0",background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:1,color:mode===m?"#C9A84C":"rgba(26,22,20,0.35)",borderBottom:mode===m?"2px solid #C9A84C":"2px solid transparent",transition:"all 0.2s"}}>{m==="login"?"CONNEXION":"INSCRIPTION"}</button>
@@ -184,7 +244,9 @@ function AuthScreen({onLogin, showToast}) {
 
         <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Email</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="sophie@luxloc.fr" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
 
-        <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Mot de passe</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/></div>
+        <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Mot de passe</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box",outline:"none"}}/>
+          {mode==="login"&&<div style={{textAlign:"right",marginTop:8}}><button onClick={()=>{setMode("forgot");setFormError("");}} style={linkStyle}>Mot de passe oublié ?</button></div>}
+        </div>
 
         <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading||!email||!password} style={{padding:"14px 0",border:"none",background:email&&password?"#C9A84C":"rgba(26,22,20,0.08)",color:email&&password?"#1A1614":"rgba(26,22,20,0.25)",fontSize:13,letterSpacing:1,fontWeight:600,cursor:email&&password?"pointer":"default",marginTop:8}}>{loading?"Chargement...":(mode==="login"?"SE CONNECTER":"CRÉER MON COMPTE")}</button>
 
@@ -194,10 +256,12 @@ function AuthScreen({onLogin, showToast}) {
           <div style={{flex:1,height:1,background:"rgba(26,22,20,0.08)"}}/>
         </div>
 
-        <button onClick={demoLogin} disabled={loading} style={{padding:"12px 0",border:"1px solid rgba(201,168,76,0.3)",background:"transparent",color:"#C9A84C",fontSize:12,letterSpacing:1,cursor:"pointer"}}>ACCÈS DÉMO RAPIDE (sophie@luxloc.fr)</button>
+        {/* Demo login */}
+        <button onClick={demoLogin} disabled={loading} style={{padding:"12px 0",border:"1px solid rgba(201,168,76,0.3)",background:"transparent",color:"#C9A84C",fontSize:12,letterSpacing:1,cursor:"pointer"}}>Découvrir la démonstration</button>
 
-        <p style={{fontSize:10,color:"rgba(26,22,20,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, les données sont stockées localement via l'API FastAPI.</p>
+        <p style={{fontSize:10,color:"rgba(26,22,20,0.2)",textAlign:"center",marginTop:8}}>En vous inscrivant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.</p>
       </div>
+      </>}
     </div>
   </div>
 }
@@ -361,13 +425,19 @@ function LuxlocLogo({size=36, showWordmark=true, wordmarkSize=18, tagline=null, 
 
 function Toast({msg,onDone}){useEffect(()=>{const t=setTimeout(onDone,3000);return()=>clearTimeout(t)},[]);return <div className="toast">{msg}</div>}
 
-function Nav({screen,setScreen,user,onLogout}){
+// ═══ NAV ═══
+function Nav({screen,setScreen,user,onLogout,moderationCount=0}){
+  const isAdmin = user&&user.role==="admin";
+  const monEspace = isAdmin ? SCREENS.ADMIN_CONSOLE : (user&&user.role==="renter") ? SCREENS.RENTER_PROFILE : SCREENS.OWNER_DASHBOARD;
   return <nav style={{position:"sticky",top:0,zIndex:50,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 clamp(16px,4vw,48px)",height:64,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(201,168,76,0.12)"}}>
     <div style={{display:"flex",alignItems:"center",gap:28}}>
       <LuxlocLogo size={34} wordmarkSize={17} onClick={()=>setScreen(SCREENS.LANDING)}/>
       <div style={{display:"flex",gap:24,marginLeft:32}}>
-        {[{l:"Accueil",s:SCREENS.LANDING},{l:"Louer",s:SCREENS.RENTER_BROWSE},{l:"Mettre en location",s:SCREENS.OWNER_VERIFY,hideForRenter:true},{l:"Mon espace",s:(user&&user.role==="renter")?SCREENS.RENTER_PROFILE:SCREENS.OWNER_DASHBOARD},{l:"Statistiques",s:SCREENS.STATS,adminOnly:true}].filter(n=>{ if(n.adminOnly) return user&&user.role==="admin"; if(n.hideForRenter) return !(user&&user.role==="renter"); return true; }).map(n=>
-          <button key={n.s} onClick={()=>setScreen(n.s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:.5,color:screen===n.s?"#C9A84C":"rgba(26,22,20,0.55)",borderBottom:screen===n.s?"1px solid #C9A84C":"1px solid transparent",padding:"4px 0"}}>{n.l}</button>
+        {[{l:"Accueil",s:SCREENS.LANDING},{l:"Louer",s:SCREENS.RENTER_BROWSE},{l:"Mettre en location",s:SCREENS.OWNER_VERIFY,hideForRenter:true},{l:isAdmin?"Administration":"Mon espace",s:monEspace,badge:isAdmin?moderationCount:0},{l:"Statistiques",s:SCREENS.STATS,adminOnly:true}].filter(n=>{ if(n.adminOnly) return user&&user.role==="admin"; if(n.hideForRenter) return !(user&&user.role==="renter"); return true; }).map(n=>
+          <button key={n.s} onClick={()=>setScreen(n.s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,letterSpacing:.5,color:screen===n.s?"#C9A84C":"rgba(26,22,20,0.55)",borderBottom:screen===n.s?"1px solid #C9A84C":"1px solid transparent",padding:"4px 0",display:"flex",alignItems:"center",gap:6}}>
+            {n.l}
+            {n.badge>0&&<span style={{background:"#6D2E46",color:"#FAF8F4",borderRadius:9,minWidth:16,height:16,fontSize:10,lineHeight:"16px",textAlign:"center",padding:"0 4px",fontWeight:700}}>{n.badge}</span>}
+          </button>
         )}
       </div>
     </div>
@@ -375,7 +445,6 @@ function Nav({screen,setScreen,user,onLogout}){
       {user && <span style={{fontSize:11,color:"rgba(26,22,20,0.4)"}}>{user.first_name} {user.last_name}</span>}
       <div style={{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#6D2E46,#C9A84C)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:500}}>{user?user.first_name[0]+user.last_name[0]:"?"}</div>
       <button onClick={onLogout} style={{background:"none",border:"1px solid rgba(26,22,20,0.1)",padding:"4px 12px",fontSize:10,color:"rgba(26,22,20,0.4)",cursor:"pointer",letterSpacing:1}}>DÉCONNEXION</button>
-      <span className="api-badge">API LIVE</span>
     </div>
   </nav>
 }
@@ -387,8 +456,13 @@ function Landing({setScreen,articles,stats}){
   const [hovered,setHovered]=useState(null);
   useEffect(()=>{setTimeout(()=>setLoaded(true),100)},[]);
 
+  // Pièces choisies pour l'empilement du hero
+  // On ne met en avant que des pièces réellement authentifiées : la carte
+  // affiche « VÉRIFIÉ » et le badge reprend leur vrai score.
   const withPhoto = (articles||[]).filter(a=>a.photo);
-  const feat = (withPhoto.length>=2 ? withPhoto : (articles||[])).slice(0,3);
+  const verifiedWithPhoto = withPhoto.filter(a=>a.verification_status==="verified");
+  const feat = (verifiedWithPhoto.length>=2 ? verifiedWithPhoto : withPhoto.length>=2 ? withPhoto : (articles||[])).slice(0,3);
+  const heroScore = feat[1]?.verification_score;
   const featuredGrid = (articles||[]).slice(0,4);
 
   const fadeIn = (delay=0) => ({
@@ -407,6 +481,7 @@ function Landing({setScreen,articles,stats}){
 
       <div style={{maxWidth:1380,margin:"0 auto",display:"grid",gridTemplateColumns:"1.05fr 0.95fr",gap:"clamp(40px,5vw,90px)",alignItems:"center",position:"relative"}}>
 
+        {/* Côté texte */}
         <div style={fadeIn(0)}>
           <div style={{fontSize:11,letterSpacing:5,color:"#8a6e26",marginBottom:36,fontWeight:600,display:"flex",alignItems:"center",gap:14}}>
             <span style={{display:"inline-block",width:36,height:1,background:"#C9A84C"}}/>
@@ -416,11 +491,11 @@ function Landing({setScreen,articles,stats}){
           <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(46px,7vw,112px)",fontWeight:300,lineHeight:0.94,marginBottom:36,letterSpacing:"-0.025em"}}>
             Le luxe<br/>
             <span style={{fontWeight:700}}>se partage</span><br/>
-            <span style={{fontStyle:"italic",fontWeight:400,color:"#C9A84C"}}>desormais</span>.
+            <span style={{fontStyle:"italic",fontWeight:400,color:"#C9A84C"}}>désormais</span>.
           </h1>
 
           <p style={{fontSize:17,lineHeight:1.65,color:"rgba(26,22,20,0.6)",maxWidth:500,marginBottom:48,fontWeight:400}}>
-            Une nouvelle facon d'acceder aux pieces les plus rares — verifiees une a une par notre intelligence artificielle. Authenticite garantie, elegance accessible.
+            Une nouvelle façon d'accéder aux pièces les plus rares — vérifiées une à une par notre intelligence artificielle. Authenticité garantie, élégance accessible.
           </p>
 
           <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
@@ -429,11 +504,15 @@ function Landing({setScreen,articles,stats}){
           </div>
         </div>
 
+        {/* Côté visuel — pile de cartes asymétriques */}
         <div style={{position:"relative",height:"clamp(440px,52vh,600px)",transform:`translateY(${-scrollY*0.12}px)`,willChange:"transform",...fadeIn(0.25)}}>
         <div ref={tiltRef} style={{position:"absolute",inset:0,transition:"transform .4s cubic-bezier(0.2,0.8,0.2,1)"}}>
 
-          <div style={{position:"absolute",top:30,left:"6%",width:"56%",height:"68%",background:"linear-gradient(155deg,#6D2E46 0%,#1A1614 100%)",transform:"rotate(-5deg)",boxShadow:"0 22px 60px rgba(26,22,20,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(80px,11vw,160px)",color:"rgba(201,168,76,0.16)",fontWeight:200}}>{feat[0]?.brand?.[0]||"H"}</span>
+          {/* Carte arrière — deuxième pièce de la collection */}
+          <div style={{position:"absolute",top:30,left:"6%",width:"56%",height:"68%",background:"#FFFFFF",padding:10,transform:"rotate(-5deg)",boxShadow:"0 22px 60px rgba(26,22,20,0.18)",border:"1px solid rgba(26,22,20,0.04)"}}>
+            <div style={{position:"relative",width:"100%",height:"100%",background:feat[0]?.photo?`url(${feat[0].photo}) center/cover`:"linear-gradient(155deg,#6D2E46 0%,#1A1614 100%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {!feat[0]?.photo&&<span style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(80px,11vw,160px)",color:"rgba(201,168,76,0.16)",fontWeight:200}}>{feat[0]?.brand?.[0]||"H"}</span>}
+            </div>
           </div>
 
           <div style={{position:"absolute",top:"12%",left:"28%",width:"60%",height:"82%",background:"#FFFFFF",boxShadow:"0 32px 90px rgba(26,22,20,0.18)",transform:"rotate(2.5deg)",overflow:"hidden",border:"1px solid rgba(26,22,20,0.04)"}}>
@@ -445,29 +524,30 @@ function Landing({setScreen,articles,stats}){
               <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,marginBottom:8}}>{feat[1]?.title||"Speedy 25"}</div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
                 <span style={{fontSize:13,color:"rgba(26,22,20,0.5)"}}>{feat[1]?.price_per_day||85}€ / jour</span>
-                <span style={{fontSize:10,letterSpacing:1.5,color:"#1f5a3d",fontWeight:600}}>● VÉRIFIÉ</span>
+                {feat[1]?.verification_status==="verified"&&<span style={{fontSize:10,letterSpacing:1.5,color:"#1f5a3d",fontWeight:600}}>● VÉRIFIÉ</span>}
               </div>
             </div>
           </div>
 
-          <div style={{position:"absolute",bottom:"4%",right:"2%",padding:"18px 24px",background:"#1A1614",color:"#FAF8F4",boxShadow:"0 14px 44px rgba(26,22,20,0.32)",animation:"float 5s ease-in-out infinite"}}>
+          {/* Badge IA flottant — score réel de la pièce du milieu */}
+          {heroScore!=null&&feat[1]?.verification_status==="verified"&&<div style={{position:"absolute",bottom:"4%",right:"2%",padding:"18px 24px",background:"#1A1614",color:"#FAF8F4",boxShadow:"0 14px 44px rgba(26,22,20,0.32)",animation:"float 5s ease-in-out infinite"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:"#5DCAA5",boxShadow:"0 0 14px rgba(93,202,165,0.8)"}}/>
               <div style={{fontSize:9,letterSpacing:2.5,color:"#C9A84C",fontWeight:600}}>VÉRIFIÉ IA</div>
             </div>
-            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:600,letterSpacing:"-0.02em"}}>0.96</div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:600,letterSpacing:"-0.02em"}}>{heroScore.toFixed(2)}</div>
             <div style={{fontSize:10,color:"rgba(245,240,235,0.55)",marginTop:2,letterSpacing:0.5}}>score d'authenticité</div>
-          </div>
+          </div>}
         </div>
         </div>
       </div>
 
-      <div style={{maxWidth:1380,margin:"clamp(60px,8vw,100px) auto 0",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0,borderTop:"1px solid rgba(26,22,20,0.1)",paddingTop:36,...fadeIn(0.5)}}>
+      {/* Stats sous le hero — chiffres animés au défilement */}
+      <div style={{maxWidth:1380,margin:"clamp(60px,8vw,100px) auto 0",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:0,borderTop:"1px solid rgba(26,22,20,0.1)",paddingTop:36,...fadeIn(0.5)}}>
         {[
-          {render:<><Counter value={(stats?.articles||8)} suffix="+"/></>, l:"PIÈCES CERTIFIÉES"},
-          {render:<><Counter value={99.1} decimals={1} suffix="%"/></>, l:"AUTHENTIFICATION"},
-          {render:<><span style={{opacity:0.85}}>&lt;</span><Counter value={15} suffix="s"/></>, l:"PAR ARTICLE"},
-          {render:<><Counter value={4.9} decimals={1}/><span style={{color:"rgba(26,22,20,0.45)"}}>/5</span></>, l:"SATISFACTION"}
+          {render:<><Counter value={stats?.verification?.verifies||0}/></>, l:"PIÈCES CERTIFIÉES"},
+          {render:<><Counter value={stats?.verification?.taux_auto_validation||0} decimals={1} suffix="%"/></>, l:"AUTHENTIFICATION AUTOMATIQUE"},
+          {render:<><Counter value={stats?.score_ia_moyen||0} decimals={2}/></>, l:"SCORE IA MOYEN"}
         ].map((s,i)=>
           <div key={i} style={{padding:"0 28px",borderLeft:i>0?"1px solid rgba(26,22,20,0.08)":"none"}}>
             <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:"clamp(28px,3vw,42px)",fontWeight:300,marginBottom:8,letterSpacing:"-0.015em"}}>{s.render}</div>
@@ -616,13 +696,15 @@ function Landing({setScreen,articles,stats}){
           <div>
             <div style={{fontSize:10,letterSpacing:3,color:"#C9A84C",fontWeight:600,marginBottom:18}}>TECHNOLOGIE</div>
             <div onClick={()=>setScreen(SCREENS.MODEL_IA)} style={{fontSize:13,marginBottom:10,cursor:"pointer",color:"rgba(245,240,235,0.6)",transition:"color .2s"}} onMouseEnter={e=>e.target.style.color="#C9A84C"} onMouseLeave={e=>e.target.style.color="rgba(245,240,235,0.6)"}>Notre modèle d'authentification IA</div>
-            <div style={{fontSize:13,marginBottom:10,color:"rgba(245,240,235,0.55)"}}>Random Forest · 9 features</div>
-            <div style={{fontSize:13,color:"rgba(245,240,235,0.55)"}}>API publique · Documentation</div>
+            <div style={{fontSize:13,color:"rgba(245,240,235,0.55)"}}>Random Forest · 9 features</div>
           </div>
         </div>
         <div style={{paddingTop:32,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
           <div style={{fontSize:11,letterSpacing:2,color:"rgba(245,240,235,0.35)"}}>© 2026 LUXLOC · MAISON PARIS · TOUS DROITS RÉSERVÉS</div>
-          <div style={{fontSize:11,letterSpacing:2,color:"rgba(245,240,235,0.35)"}}>Fait avec exigence à Paris</div>
+          <div style={{display:"flex",alignItems:"center",gap:20}}>
+            <div style={{fontSize:11,letterSpacing:2,color:"rgba(245,240,235,0.35)"}}>Fait avec exigence à Paris</div>
+            <a href="/docs" target="_blank" rel="noopener noreferrer" style={{fontSize:11,letterSpacing:1,color:"rgba(245,240,235,0.25)",textDecoration:"none"}} onMouseEnter={e=>e.target.style.color="rgba(245,240,235,0.5)"} onMouseLeave={e=>e.target.style.color="rgba(245,240,235,0.25)"}>Documentation technique de l'API</a>
+          </div>
         </div>
       </div>
     </footer>
@@ -641,9 +723,26 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   const [model,setModel]=useState("");
   const [price,setPrice]=useState("");
   const [analyzing,setAnalyzing]=useState(false);
+  const [verifError,setVerifError]=useState("");
   const [progress,setProgress]=useState(0);
   const [pLabel,setPLabel]=useState("");
   const [articleId,setArticleId]=useState(null);
+
+  // Les photos de téléphone font souvent 4000 px et plusieurs Mo : on les
+  // réduit à 1600 px (JPEG) avant l'envoi, ce qui allège l'analyse et la
+  // mémoire du serveur. L'analyse exige au moins 200 px, la marge est large.
+  const resizePhoto = (dataUrl) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1600, scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = () => reject(new Error("format"));
+    img.src = dataUrl;
+  });
 
   const handleFile = (idx) => {
     const input = document.createElement("input");
@@ -651,7 +750,15 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
     input.onchange = (e) => {
       const file = e.target.files[0]; if(!file) return;
       const reader = new FileReader();
-      reader.onload = (ev) => { const n=[...photos]; n[idx]=ev.target.result; setPhotos(n); };
+      reader.onload = async (ev) => {
+        try {
+          const small = await resizePhoto(ev.target.result);
+          setPhotos(prev => { const n=[...prev]; n[idx]=small; return n; });
+          setVerifError("");
+        } catch {
+          setVerifError("Cette photo n'a pas pu être lue. Utilisez une photo au format JPEG ou PNG (les photos HEIC d'iPhone ne sont pas prises en charge).");
+        }
+      };
       reader.readAsDataURL(file);
     };
     input.click();
@@ -673,7 +780,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
     try {
       const res = await api(`/articles/?owner_id=${user?user.id:1}`, { method:"POST", body:{ title:model||"Article de luxe", brand, model, category:cat, description:"Article mis en location via LUXLOC", price_per_day:parseFloat(price)||85, retail_price:parseFloat(price)*15||1200, condition:"Excellent" }});
       setArticleId(res.id);
-      showToast(`✓ Article #${res.id} créé via API`);
+      showToast("✓ Article enregistré");
       setStep(1);
     } catch(e) { showToast("✗ Erreur: "+e.message); }
   };
@@ -696,9 +803,11 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
       });
       if(window._luxlocPhotos===undefined) window._luxlocPhotos={};
       window._luxlocPhotos[articleId] = photos[0];
-      showToast("✓ Photos + facture envoyées — analyse en cours");
-      setStep(2);
-    } catch(e) { showToast("✗ Erreur: "+e.message); }
+      return true;
+    } catch(e) {
+      setVerifError("Les photos n'ont pas pu être envoyées : " + e.message + ". Vérifiez votre connexion puis relancez.");
+      return false;
+    }
   };
 
   const startAnalysis = async () => {
@@ -711,7 +820,24 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
       clearInterval(iv); setProgress(100); setPLabel("Terminé !");
       showToast(`✓ Vérification terminée — Score: ${res.scores.global}`);
       setTimeout(()=>{ setVerifResult(res); setScreen(SCREENS.OWNER_RESULT); },800);
-    } catch(e) { clearInterval(iv); showToast("✗ Erreur: "+e.message); }
+    } catch(e) {
+      // On revient aux photos avec la raison affichée, au lieu de laisser
+      // l'écran figé sur son pourcentage.
+      clearInterval(iv);
+      setAnalyzing(false); setProgress(0); setStep(2);
+      window.scrollTo({top:0,behavior:"smooth"});
+      setVerifError(e.message === "Failed to fetch" || e.message === "Bad Gateway" || e.message === "Service Unavailable"
+        ? "Le serveur n'a pas répondu pendant l'analyse. Patientez quelques secondes puis relancez la vérification."
+        : "La vérification n'a pas abouti : " + e.message);
+    }
+  };
+
+  const launchVerification = async () => {
+    setVerifError("");
+    const ok = await uploadPhotosAndDocs();
+    if (!ok) return;
+    setStep(3);
+    startAnalysis();
   };
 
   const photoLabels=["Vue d'ensemble","Logo / Marque","Étiquette intérieure","Coutures & finitions"];
@@ -720,7 +846,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{marginBottom:40}}>
-        <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PROPRIÉTAIRE — VÉRIFICATION<span className="api-badge">CONNECTÉ API</span></div>
+        <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>PROPRIÉTAIRE — VÉRIFICATION</div>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:8}}>Authentifiez votre article</h1>
       </div>
       <div style={{display:"flex",gap:4,marginBottom:40}}>
@@ -776,7 +902,8 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
       </div>}
 
       {step===2&&!analyzing&&<div>
-        <p style={{fontSize:13,color:"rgba(26,22,20,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Lumière naturelle, fond neutre de préférence.</p>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.5)",marginBottom:24}}>Prenez 4 photos de votre article. Toutes les conditions sont acceptées ; une lumière naturelle et un fond neutre donnent un résultat plus fiable. Si les photos sont trop sombres ou floues, un expert examinera l'article.</p>
+        {verifError&&<div role="alert" style={{fontSize:13,lineHeight:1.5,color:"#A33A34",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",padding:"12px 14px",marginBottom:20}}>{verifError}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
           {photoLabels.map((label,i)=><div key={i} onClick={()=>handleFile(i)} style={{cursor:"pointer",aspectRatio:"4/3",border:`1px ${photos[i]?"solid rgba(45,106,79,0.6)":"dashed rgba(26,22,20,0.15)"}`,background:photos[i]?"rgba(45,106,79,0.04)":"rgba(26,22,20,0.02)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all 0.3s",overflow:"hidden",position:"relative"}}>
             {photos[i]?<>
@@ -791,7 +918,7 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
           </div>)}
         </div>
         <div style={{fontSize:11,color:nbPhotos>=3?"#5DCAA5":"rgba(26,22,20,0.3)",marginBottom:12,textAlign:"center"}}>{nbPhotos}/4 photos ajoutées {nbPhotos>=3?"— prêt pour l'analyse":""}</div>
-        <button onClick={()=>{uploadPhotosAndDocs().then(()=>{setStep(3);startAnalysis();});}} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(26,22,20,0.08)",color:nbPhotos>=3?"#1A1614":"rgba(26,22,20,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
+        <button onClick={launchVerification} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(26,22,20,0.08)",color:nbPhotos>=3?"#1A1614":"rgba(26,22,20,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
       </div>}
 
       {step===3&&analyzing&&<div style={{textAlign:"center",padding:"60px 0"}}>
@@ -801,24 +928,16 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
         </div>
         <div style={{fontSize:14,color:"#C9A84C",marginBottom:8}}>{pLabel}</div>
         <div style={{width:300,height:3,background:"rgba(26,22,20,0.06)",margin:"16px auto",borderRadius:2}}><div style={{height:"100%",background:"#C9A84C",borderRadius:2,width:`${progress}%`,transition:"width 0.3s"}}/></div>
-        <div style={{fontSize:11,color:"rgba(26,22,20,0.3)",marginTop:16}}>Appel POST /api/v1/verification/launch en cours...</div>
+        <div style={{fontSize:11,color:"rgba(26,22,20,0.3)",marginTop:16}}>Analyse de l'article en cours...</div>
       </div>}
     </div>
   </div>
 }
 
 // ═══ OWNER RESULT ═══
-function OwnerResult({setScreen,verifResult,showToast}){
+function OwnerResult({setScreen,verifResult}){
   const [loaded,setLoaded]=useState(false);
-  const [validated,setValidated]=useState(false);
   useEffect(()=>{setTimeout(()=>setLoaded(true),200)},[]);
-  const expertValidate = async () => {
-    try {
-      await api(`/verification/${verifResult.article_id}/expert-validate`,{method:"POST"});
-      setValidated(true);
-      showToast && showToast("✓ Article validé par l'expert — disponible à la location");
-    } catch(e){ showToast && showToast("✗ "+e.message); }
-  };
   if(!verifResult) return null;
   const sc=verifResult.scores;
   const scores=[{label:"Modèle IA (authenticité)",score:sc.cnn},{label:"Logo & monogramme",score:sc.logo},{label:"Coutures & finitions",score:sc.stitching},{label:"Texture matériaux",score:sc.texture},{label:"Étiquette & série",score:sc.label},{label:"Règles métier",score:sc.rules},{label:"Facture d'achat",score:sc.invoice}];
@@ -828,12 +947,12 @@ function OwnerResult({setScreen,verifResult,showToast}){
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
       <div style={{textAlign:"center",marginBottom:48,opacity:loaded?1:0,transform:loaded?"translateY(0)":"translateY(20px)",transition:"all 0.6s"}}>
         <div style={{width:100,height:100,borderRadius:"50%",margin:"0 auto 24px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:36,color:"#5DCAA5"}}>✓</span></div>
-        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:12}}>{verifResult.verdict}<span className="api-badge">DONNÉES API</span></div>
+        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:12}}>{verifResult.verdict}</div>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:36,marginBottom:8}}>Score de confiance : <span style={{color:"#5DCAA5"}}>{sc.global}</span></h1>
         <p style={{fontSize:12,color:"rgba(26,22,20,0.35)"}}>Pipeline {verifResult.pipeline?.version} — {verifResult.pipeline?.processing_time_ms}ms</p>
       </div>
       <div style={{border:"1px solid rgba(26,22,20,0.08)",padding:28,marginBottom:24}}>
-        <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:20}}>DÉTAIL PAR COMPOSANT (retourné par l'API)</div>
+        <div style={{fontSize:12,letterSpacing:2,color:"#C9A84C",marginBottom:20}}>Détail de l'analyse</div>
         {scores.map((s,i)=>{const v=Math.min(Math.max(s.score,0),1);const color=v>=0.85?"#5DCAA5":v>=0.7?"#C9A84C":"#EF9F27";return <div key={i} style={{display:"flex",alignItems:"center",gap:16,marginBottom:i<scores.length-1?16:0}}>
           <span style={{fontSize:13,color:"rgba(26,22,20,0.6)",minWidth:160}}>{s.label}</span>
           <div style={{flex:1,height:4,background:"rgba(26,22,20,0.06)",borderRadius:2}}><div style={{height:"100%",background:color,borderRadius:2,width:`${v*100}%`,transition:"width 1s ease-out",transitionDelay:`${i*0.15}s`}}/></div>
@@ -851,15 +970,11 @@ function OwnerResult({setScreen,verifResult,showToast}){
           {brandSig.details.justesse_marine!==undefined&&<span>Justesse marine : {brandSig.details.justesse_marine}</span>}
         </div>
       </div>}
-      {verifResult.status==="review" && <div style={{border:`1px solid ${validated?"rgba(93,202,165,0.35)":"rgba(239,159,39,0.35)"}`,padding:24,marginBottom:24,background:validated?"rgba(45,106,79,0.08)":"rgba(239,159,39,0.06)"}}>
-        {validated ? <>
-          <div style={{fontSize:12,letterSpacing:2,color:"#5DCAA5",marginBottom:8}}>✓ VALIDÉ PAR L'EXPERT</div>
-          <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6}}>L'article a été validé et est désormais disponible à la location dans le catalogue.</p>
-        </> : <>
-          <div style={{fontSize:12,letterSpacing:2,color:"#EF9F27",marginBottom:8}}>EN ATTENTE DE VALIDATION EXPERT</div>
-          <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6,marginBottom:16}}>Le score se situe dans la zone d'incertitude (0,40–0,84). Conformément au pipeline, l'article est routé vers un expert humain qui tranche avant la mise en location.</p>
-          <button onClick={expertValidate} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>SIMULER LA VALIDATION PAR UN EXPERT</button>
-        </>}
+      {verifResult.status==="review" && <div style={{border:"1px solid rgba(239,159,39,0.35)",padding:24,marginBottom:24,background:"rgba(239,159,39,0.06)"}}>
+        <div style={{fontSize:12,letterSpacing:2,color:"#EF9F27",marginBottom:8}}>EN ATTENTE DE VALIDATION EXPERT</div>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.6)",lineHeight:1.6}}>{verifResult.analysis?.qualite_photos_insuffisante
+          ? "Vos photos sont trop sombres, floues ou peu contrastées pour une décision automatique fiable. Un expert humain examine l'article avant sa mise en location : vous serez informé de sa décision."
+          : "Le score se situe dans la zone d'incertitude. Un expert humain examine l'article avant sa mise en location : vous serez informé de sa décision."}</p>
       </div>}
       <div style={{display:"flex",gap:12}}>
         <button onClick={()=>setScreen(SCREENS.RENTER_BROWSE)} style={{flex:1,fontSize:13,letterSpacing:1,padding:"14px 0",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>VOIR LE CATALOGUE</button>
@@ -916,7 +1031,7 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{padding:"40px clamp(16px,4vw,48px)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
-        <div><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>LOCATAIRE<span className="api-badge">GET /articles</span></div><h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32}}>Catalogue</h1></div>
+        <div><div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:8}}>LOCATAIRE</div><h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32}}>Catalogue</h1></div>
         <div style={{display:"flex",gap:6}}>
           {[{id:"all",label:"Tous"},...categories].map(c=><button key={c.id} onClick={()=>setFilter(c.id)} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",border:`1px solid ${filter===c.id?"#C9A84C":"rgba(26,22,20,0.1)"}`,background:filter===c.id?"rgba(201,168,76,0.1)":"transparent",color:filter===c.id?"#C9A84C":"rgba(26,22,20,0.4)",cursor:"pointer"}}>{c.label}</button>)}
         </div>
@@ -939,7 +1054,13 @@ function RenterBrowse({setScreen,articles,setSelectedArticle}){
 
 // ═══ RENTER DETAIL ═══
 function RenterDetail({setScreen,article,showToast,user,setTxData}){
-  const [dates,setDates]=useState({start:"2026-04-05",end:"2026-04-08"});
+  // Dates proposées par défaut : de demain à dans 4 jours (jamais dans le passé)
+  const [dates,setDates]=useState(()=>{
+    const iso=d=>d.toISOString().slice(0,10);
+    const debut=new Date(); debut.setDate(debut.getDate()+1);
+    const fin=new Date(debut); fin.setDate(fin.getDate()+3);
+    return {start:iso(debut),end:iso(fin)};
+  });
   const [estimate,setEstimate]=useState(null);
   const days=Math.max(1,Math.round((new Date(dates.end)-new Date(dates.start))/(1000*60*60*24)));
 
@@ -981,8 +1102,8 @@ function RenterDetail({setScreen,article,showToast,user,setTxData}){
               <div style={{display:"flex",justifyContent:"space-between",fontSize:15,padding:"12px 0 0",borderTop:"1px solid rgba(201,168,76,0.2)",fontWeight:600}}><span style={{color:"#C9A84C"}}>Total</span><span style={{color:"#C9A84C"}}>{estimate.total}€</span></div>
             </>}
           </div>
-          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>RÉSERVER VIA API →</button>
-          <p style={{fontSize:11,color:"rgba(26,22,20,0.3)",textAlign:"center",marginTop:12}}>POST /api/v1/transactions/ — Paiement sécurisé</p>
+          <button onClick={reserve} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>Réserver →</button>
+          <p style={{fontSize:11,color:"rgba(26,22,20,0.3)",textAlign:"center",marginTop:12}}>Paiement sécurisé</p>
         </div>
       </div>
     </div>
@@ -997,9 +1118,9 @@ function RenterReturn({setScreen,showToast}){
 
   const submitReturn = async () => {
     try {
-      const res = await api("/returns/",{method:"POST",body:{transaction_id:1,general_condition:conditions.general||false,cleanliness:conditions.clean||false,hardware_intact:conditions.hardware||false,accessories_returned:conditions.accessories||false,notes:"Retour via maquette LUXLOC"}});
+      const res = await api("/returns/",{method:"POST",body:{transaction_id:1,general_condition:conditions.general||false,cleanliness:conditions.clean||false,hardware_intact:conditions.hardware||false,accessories_returned:conditions.accessories||false,notes:"Retour standard"}});
       setReturnResult(res);
-      showToast(`✓ Retour enregistré via API — ${res.condition}`);
+      showToast(`✓ Retour enregistré — ${res.condition}`);
     } catch(e) { showToast("✗ "+e.message); }
   };
 
@@ -1007,7 +1128,7 @@ function RenterReturn({setScreen,showToast}){
 
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
     <div style={{maxWidth:760,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
-      <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>LOCATAIRE — RETOUR<span className="api-badge">POST /returns</span></div>
+      <div style={{fontSize:11,letterSpacing:4,color:"#C9A84C",marginBottom:12}}>LOCATAIRE — RETOUR</div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:32}}>Retour de l'article</h1>
 
       <div style={{display:"flex",gap:16,padding:20,border:"1px solid rgba(26,22,20,0.08)",marginBottom:32}}>
@@ -1035,7 +1156,7 @@ function RenterReturn({setScreen,showToast}){
       {returnResult&&<div style={{textAlign:"center",padding:28,border:"1px solid rgba(93,202,165,0.2)",background:"rgba(93,202,165,0.03)",marginBottom:24}}>
         <div style={{fontSize:11,letterSpacing:3,color:"#5DCAA5",marginBottom:8}}>{returnResult.verdict}</div>
         <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18}}>Garantie : {returnResult.guarantee?.refunded}€ restitués / {returnResult.guarantee?.deducted}€ retenus</div>
-        <div style={{fontSize:10,color:"rgba(26,22,20,0.3)",marginTop:8}}>Réponse API : condition={returnResult.condition}</div>
+        <div style={{fontSize:10,color:"rgba(26,22,20,0.3)",marginTop:8}}>État constaté : {returnResult.condition}</div>
       </div>}
 
       <div style={{display:"flex",gap:12}}>
@@ -1065,14 +1186,6 @@ function OwnerDashboard({setScreen,user,showToast}){
     loadArticles();
     api(`/transactions/user/${user.id}?role=owner`).then(setTransactions).catch(()=>setTransactions([]));
   },[user]);
-
-  const expertValidate = async (articleId) => {
-    try {
-      await api(`/verification/${articleId}/expert-validate`,{method:"POST"});
-      showToast && showToast("✓ Article validé par l'expert");
-      loadArticles();
-    } catch(e){ showToast && showToast("✗ "+e.message); }
-  };
 
   const totalRevenue = transactions.reduce((s,t)=>s+(t.total||0),0);
   const activeRentals = transactions.filter(t=>t.status==="active"||t.status==="confirmed").length;
@@ -1120,7 +1233,6 @@ function OwnerDashboard({setScreen,user,showToast}){
               return <span style={{padding:"4px 10px",fontSize:10,letterSpacing:1,border:"1px solid",borderColor:col,color:col,opacity:0.95}}>{label}</span>;
             })()}
             {a.verification_score&&<div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginTop:6}}>Score IA : {a.verification_score.toFixed(2)}</div>}
-            {a.verification_status==="review"&&!a.is_available&&<button onClick={()=>expertValidate(a.id)} style={{marginTop:8,fontSize:10,letterSpacing:1,padding:"6px 12px",border:"1px solid rgba(239,159,39,0.5)",background:"rgba(239,159,39,0.1)",color:"#EF9F27",cursor:"pointer",fontWeight:600}}>VALIDER (EXPERT)</button>}
           </div>
         </div>)}
       </div>
@@ -1153,21 +1265,49 @@ function OwnerDashboard({setScreen,user,showToast}){
 }
 
 // ═══ RENTER PAYMENT ═══
-function RenterPayment({setScreen,article,txData,showToast}){
+// Algorithme de Luhn : la somme de contrôle que respecte tout numéro de
+// carte bancaire valide (4242 4242 4242 4242 passe, 1234 5678… non).
+function luhnValide(num){
+  const d=num.replace(/\D/g,"");
+  if(d.length!==16) return false;
+  let s=0;
+  for(let i=0;i<16;i++){ let n=+d[15-i]; if(i%2===1){ n*=2; if(n>9) n-=9; } s+=n; }
+  return s%10===0;
+}
+function expirationValide(v){
+  const m=/^(\d{2})\/(\d{2})$/.exec(v);
+  if(!m) return false;
+  const mois=+m[1], annee=2000+ +m[2];
+  if(mois<1||mois>12) return false;
+  const now=new Date();
+  return annee>now.getFullYear() || (annee===now.getFullYear() && mois>=now.getMonth()+1);
+}
+
+function RenterPayment({setScreen,article,txData,showToast,user}){
   const [cardNum,setCardNum]=useState("");
   const [expiry,setExpiry]=useState("");
   const [cvv,setCvv]=useState("");
   const [paying,setPaying]=useState(false);
   const [paid,setPaid]=useState(false);
+  const [reference,setReference]=useState("");
+  const [erreur,setErreur]=useState("");
 
-  const processPayment = () => {
+  const processPayment = async () => {
+    if(!luhnValide(cardNum)) return setErreur("Ce numéro de carte n'est pas valide. Vérifiez les 16 chiffres.");
+    if(!expirationValide(expiry)) return setErreur("La date d'expiration doit être au format MM/AA et ne pas être dépassée.");
+    if(cvv.length!==3) return setErreur("Le code de sécurité doit comporter 3 chiffres.");
+    setErreur("");
     setPaying(true);
-    setTimeout(()=>{
-      setPaying(false);
+    try{
+      // Seule la réservation est envoyée : le numéro de carte ne quitte jamais le navigateur.
+      const res=await api(`/transactions/${txData.transaction_id}/pay?renter_id=${user?.id}`,{method:"POST"});
+      setReference(res.reference);
       setPaid(true);
-      showToast("✓ Paiement confirmé — Stripe #pi_" + Math.random().toString(36).substring(2,10));
-    },2500);
+      showToast("✓ Paiement enregistré");
+    }catch(e){ setErreur(e.message); }
+    setPaying(false);
   };
+  const pret = cardNum.length>=19 && expiry.length===5 && cvv.length===3;
 
   if(!article||!txData) return null;
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:"#1A1614"}}>
@@ -1205,23 +1345,25 @@ function RenterPayment({setScreen,article,txData,showToast}){
           <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Numéro de carte</label>
           <input value={cardNum} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,16);v=v.replace(/(.{4})/g,"$1 ").trim();setCardNum(v);}} placeholder="4242 4242 4242 4242" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:16,letterSpacing:2,boxSizing:"border-box",fontFamily:"'Montserrat',monospace"}}/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Expiration</label><input value={expiry} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,4);if(v.length>2)v=v.substring(0,2)+"/"+v.substring(2);setExpiry(v);}} placeholder="MM/YY" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
+            <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>Expiration</label><input value={expiry} onChange={e=>{let v=e.target.value.replace(/\D/g,"").substring(0,4);if(v.length>2)v=v.substring(0,2)+"/"+v.substring(2);setExpiry(v);}} placeholder="MM/AA" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
             <div><label style={{fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6}}>CVV</label><input value={cvv} onChange={e=>setCvv(e.target.value.replace(/\D/g,"").substring(0,3))} placeholder="123" type="password" style={{width:"100%",padding:"12px 14px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:14,boxSizing:"border-box"}}/></div>
           </div>
         </div>
       </div>
 
-      <button onClick={processPayment} disabled={paying||cardNum.length<19} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:cardNum.length>=19?"#C9A84C":"rgba(26,22,20,0.08)",color:cardNum.length>=19?"#1A1614":"rgba(26,22,20,0.25)",cursor:cardNum.length>=19?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours...":"PAYER "+txData.summary?.total+"€ — STRIPE SÉCURISÉ"}</button>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12,color:"rgba(26,22,20,0.35)"}}><Icon name="shield" size={14} stroke={1.4}/><span style={{fontSize:11,color:"rgba(26,22,20,0.45)"}}>Paiement sécurisé par Stripe — Chiffrement SSL 256 bits</span></div>
+      {erreur&&<div role="alert" style={{fontSize:13,color:"#A33A34",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",padding:"10px 14px",marginBottom:14}}>{erreur}</div>}
+      <button onClick={processPayment} disabled={paying||!pret} style={{width:"100%",fontSize:13,letterSpacing:1,padding:"16px 0",border:"none",background:pret?"#C9A84C":"rgba(26,22,20,0.08)",color:pret?"#1A1614":"rgba(26,22,20,0.25)",cursor:pret?"pointer":"default",fontWeight:600}}>{paying?"Traitement en cours…":"PAYER "+txData.summary?.total+" €"}</button>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"center",gap:8,marginTop:12}}><Icon name="shield" size={14} stroke={1.4}/><span style={{fontSize:11,lineHeight:1.5,color:"rgba(26,22,20,0.5)",maxWidth:420}}>Paiement de démonstration : aucune carte n'est débitée et le numéro saisi n'est jamais envoyé. Carte de test : 4242 4242 4242 4242, une date future, n'importe quel code à 3 chiffres.</span></div>
       </>
       :<div style={{textAlign:"center",padding:40}}>
         <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 20px",background:"rgba(45,106,79,0.1)",border:"2px solid rgba(93,202,165,0.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:32,color:"#5DCAA5"}}>✓</span></div>
-        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:8}}>PAIEMENT CONFIRMÉ</div>
+        <div style={{fontSize:11,letterSpacing:4,color:"#5DCAA5",marginBottom:8}}>PAIEMENT ENREGISTRÉ</div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:24,marginBottom:8}}>Réservation validée !</h2>
-        <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",marginBottom:24}}>Votre article sera disponible aux dates prévues. Vous recevrez un email de confirmation.</p>
+        <p style={{fontSize:13,color:"rgba(26,22,20,0.45)",marginBottom:8}}>L'article vous sera remis aux dates prévues. Retrouvez cette réservation dans « Mes locations ».</p>
+        <p style={{fontSize:12,color:"rgba(26,22,20,0.4)",marginBottom:24}}>Référence de paiement (démonstration) : <span style={{fontFamily:"monospace",color:"#1A1614"}}>{reference}</span></p>
         <div style={{display:"flex",gap:12,justifyContent:"center"}}>
           <button onClick={()=>setScreen(SCREENS.RENTER_PROFILE)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"}}>MES LOCATIONS</button>
-          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>SIMULER LE RETOUR</button>
+          <button onClick={()=>setScreen(SCREENS.RENTER_RETURN)} style={{fontSize:12,letterSpacing:1,padding:"12px 24px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600}}>Déclarer le retour</button>
         </div>
       </div>}
     </div>
@@ -1310,26 +1452,27 @@ function ModelIA(){
 
   if(err) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Impossible de charger la fiche du modèle.</div>;
   if(!info) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Chargement de la fiche modèle…</div>;
-  if(!info.model_disponible) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Modèle non entraîné. Exécuter : python -m app.ml.train</div>;
+  if(!info.model_disponible) return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px 24px",color:C.muted}}>Fiche modèle indisponible pour le moment.</div>;
 
-  const m=info.metriques, cm=info.matrice_confusion;
+  const m=info.metriques, cm=info.matrice_confusion, comp=info.comparaison_ancien_modele;
   const pct=v=>(v*100).toFixed(1)+" %";
   const metricCards=[
     {l:"Accuracy",v:pct(m.accuracy)},
-    {l:"Precision",v:pct(m.precision)},
-    {l:"Recall",v:pct(m.recall)},
+    {l:"Précision",v:pct(m.precision)},
+    {l:"Rappel",v:pct(m.recall)},
     {l:"F1-score",v:pct(m.f1_score)},
+    {l:"ROC-AUC",v:m.roc_auc.toFixed(3)},
   ];
-  const maxImp=Math.max(...info.importance_features.map(f=>f.importance));
 
   return <div style={{maxWidth:1100,margin:"0 auto",padding:"48px clamp(16px,4vw,24px)"}}>
-    <div style={{display:"flex",alignItems:"baseline",gap:14,marginBottom:6}}>
+    <div style={{display:"flex",alignItems:"baseline",gap:14,marginBottom:6,flexWrap:"wrap"}}>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:30,color:C.cream,margin:0}}>Modèle de détection de contrefaçon</h1>
-      <span style={{fontSize:11,letterSpacing:1,padding:"3px 12px",background:"rgba(201,168,76,0.12)",color:C.gold,border:`1px solid rgba(201,168,76,0.3)`}}>RANDOM FOREST v1</span>
+      <span style={{fontSize:11,letterSpacing:1,padding:"3px 12px",background:"rgba(201,168,76,0.12)",color:C.gold,border:`1px solid rgba(201,168,76,0.3)`}}>{info.architecture.toUpperCase()}</span>
     </div>
-    <p style={{color:C.muted,fontSize:13,marginBottom:32}}>{info.modele} · {info.jeu_de_donnees.taille_totale} échantillons ({info.jeu_de_donnees.entrainement} entraînement / {info.jeu_de_donnees.test} test) · 9 features d'image</p>
+    <p style={{color:C.muted,fontSize:13,marginBottom:32}}>{info.architecture} · jeu de test réel de {info.jeu_de_donnees.taille_test} images annotées authentique / contrefait</p>
 
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:14}}>
+    {/* Métriques */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:14,marginBottom:36}}>
       {metricCards.map(c=>
         <div key={c.l} style={{padding:"20px",background:C.card,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:11,letterSpacing:1,color:C.muted,marginBottom:8}}>{c.l.toUpperCase()}</div>
@@ -1337,56 +1480,59 @@ function ModelIA(){
         </div>
       )}
     </div>
-    <p style={{color:C.muted,fontSize:12,marginBottom:36}}>Validation croisée 5-fold — F1 : <span style={{color:C.cream}}>{m.f1_validation_croisee}</span></p>
 
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:36}}>
       <div>
         <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Matrice de confusion</h2>
-        <div style={{display:"grid",gridTemplateColumns:"70px 1fr 1fr",gap:6,fontSize:11}}>
-          <div></div>
-          <div style={{textAlign:"center",color:C.muted,paddingBottom:4}}>Prédit faux</div>
-          <div style={{textAlign:"center",color:C.muted,paddingBottom:4}}>Prédit vrai</div>
-          <div style={{display:"flex",alignItems:"center",color:C.muted}}>Réel faux</div>
-          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#5DCAA5",fontWeight:600}}>{cm.vrais_negatifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>contrefaçons détectées</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#5DCAA5",fontWeight:600}}>{cm.contrefacons_detectees}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>contrefaçons correctement détectées</div>
           </div>
-          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#E08585",fontWeight:600}}>{cm.faux_positifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>super fakes manqués</div>
+          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#E08585",fontWeight:600}}>{cm.contrefacons_classees_authentiques}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>contrefaçons classées à tort comme authentiques</div>
           </div>
-          <div style={{display:"flex",alignItems:"center",color:C.muted}}>Réel vrai</div>
-          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#E08585",fontWeight:600}}>{cm.faux_negatifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>vrais rejetés à tort</div>
+          <div style={{background:"rgba(163,45,45,0.12)",border:`1px solid rgba(163,45,45,0.35)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#E08585",fontWeight:600}}>{cm.authentiques_rejetes_a_tort}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>authentiques rejetés à tort</div>
           </div>
-          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"16px 0",textAlign:"center"}}>
-            <div style={{fontSize:24,color:"#5DCAA5",fontWeight:600}}>{cm.vrais_positifs}</div>
-            <div style={{fontSize:10,color:C.muted}}>authentiques validés</div>
+          <div style={{background:"rgba(45,106,79,0.15)",border:`1px solid rgba(45,106,79,0.4)`,padding:"18px 12px",textAlign:"center"}}>
+            <div style={{fontSize:26,color:"#5DCAA5",fontWeight:600}}>{cm.authentiques_valides}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:4}}>authentiques validés</div>
           </div>
         </div>
       </div>
+      {/* Comparaison avec le modèle précédent */}
       <div>
-        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Importance des features</h2>
-        <div style={{display:"flex",flexDirection:"column",gap:9}}>
-          {info.importance_features.map(f=>
-            <div key={f.feature}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.cream,marginBottom:3}}>
-                <span>{f.feature}</span><span style={{color:C.muted}}>{(f.importance*100).toFixed(1)} %</span>
-              </div>
-              <div style={{height:8,background:"rgba(26,22,20,0.06)"}}>
-                <div style={{height:8,width:`${(f.importance/maxImp*100).toFixed(0)}%`,background:C.gold}}></div>
-              </div>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,color:C.cream,marginBottom:14}}>Comparaison avec le modèle précédent</h2>
+        <p style={{fontSize:12,color:C.muted,marginBottom:16}}>Mesurée sur le même jeu de test réel de {info.jeu_de_donnees.taille_test} images.</p>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted,marginBottom:4}}>
+              <span>Ancien modèle — ROC-AUC</span><span>{comp.random_forest_roc_auc.toFixed(3)}</span>
             </div>
-          )}
+            <div style={{height:10,background:"rgba(26,22,20,0.06)"}}>
+              <div style={{height:10,width:`${(comp.random_forest_roc_auc*100).toFixed(0)}%`,background:"rgba(26,22,20,0.25)"}}></div>
+            </div>
+          </div>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.cream,marginBottom:4}}>
+              <span>{info.architecture} — ROC-AUC</span><span style={{color:C.gold,fontWeight:600}}>{comp.efficientnet_roc_auc.toFixed(3)}</span>
+            </div>
+            <div style={{height:10,background:"rgba(26,22,20,0.06)"}}>
+              <div style={{height:10,width:`${(comp.efficientnet_roc_auc*100).toFixed(0)}%`,background:C.gold}}></div>
+            </div>
+          </div>
         </div>
+        <p style={{fontSize:12,color:"#5DCAA5",marginTop:16}}>Amélioration mesurée : +{(comp.efficientnet_roc_auc-comp.random_forest_roc_auc).toFixed(3)} de ROC-AUC sur données réelles.</p>
       </div>
     </div>
 
     <div style={{marginTop:40,padding:"20px 24px",background:"rgba(201,168,76,0.04)",border:`1px solid rgba(201,168,76,0.15)`}}>
       <div style={{fontSize:11,letterSpacing:1,color:C.gold,marginBottom:8}}>NOTE MÉTHODOLOGIQUE</div>
       <p style={{fontSize:12,color:C.muted,lineHeight:1.6,margin:0}}>
-        Le modèle est intégré à l'étape 2 du pipeline de vérification. Pour ce prototype, il est entraîné sur un jeu de données généré simulant les signatures visuelles authentique / contrefaçon ; les features sont extraites de pixels réels. Le pipeline (extraction, entraînement, évaluation, déploiement) est prêt à réentraîner sur un dataset réel.
+        Ce résultat est une aide à la décision, pas une certification d'authenticité. Le jeu d'entraînement est majoritairement composé de prêt-à-porter et de sneakers, avec une part limitée de maroquinerie de luxe et aucune montre ni bijou — l'extension à ces catégories demandera un jeu de données spécialisé. La zone d'incertitude du score global (entre 0,40 et 0,84) est systématiquement arbitrée par un expert humain, jamais tranchée automatiquement.
       </p>
     </div>
   </div>;
@@ -1556,10 +1702,17 @@ function StatsScreen({showToast}){
   const v=stats.verification;
   const bigCards=[
     {l:"Articles au catalogue",v:stats.total_articles,c:C.gold},
-    {l:"Taux d'auto-validation IA",v:v.taux_auto_validation+" %",c:C.green},
-    {l:"Score IA moyen",v:stats.score_ia_moyen,c:C.gold},
-    {l:"Valeur du catalogue",v:(stats.valeur_catalogue/1000).toFixed(1)+" k€",c:C.gold},
+    {l:"Pièces certifiées",v:v.verifies,c:C.green},
+    {l:"Score d'authenticité moyen",v:stats.score_ia_moyen.toFixed(2),c:C.gold},
+    {l:"Valeur neuve du catalogue",v:(stats.valeur_catalogue/1000).toFixed(1)+" k€",c:C.gold},
   ];
+  const statusRows=[
+    {l:"Validés automatiquement par l'IA",n:v.verifies_auto??v.verifies,col:"#5DCAA5"},
+    {l:"Validés par un expert",n:v.verifies_expert??0,col:"#2D6A4F"},
+    {l:"En attente d'examen expert",n:v.en_examen,col:"#EF9F27"},
+    {l:"Rejetés",n:v.rejetes,col:"#E08585"},
+  ];
+  const totStatus=statusRows.reduce((s,r)=>s+r.n,0)||1;
 
   return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:C.ink}}>
     <div style={{maxWidth:1100,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
@@ -1570,7 +1723,7 @@ function StatsScreen({showToast}){
       </div>
       <p style={{fontSize:13,color:C.muted,marginBottom:36}}>Vue d'ensemble en temps réel — données agrégées depuis l'API LUXLOC.</p>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:36}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:36}}>
         {bigCards.map((c,i)=>
           <div key={i} style={{padding:"24px 20px",background:C.card,border:`1px solid ${C.border}`}}>
             <div style={{fontSize:11,letterSpacing:1,color:C.muted,marginBottom:10}}>{c.l.toUpperCase()}</div>
@@ -1579,9 +1732,10 @@ function StatsScreen({showToast}){
         )}
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:44}}>
+      {/* Ligne secondaire : petites stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14,marginBottom:44}}>
         {[
-          {l:"Utilisateurs inscrits",v:stats.total_utilisateurs},
+          {l:"Comptes actifs",v:stats.total_utilisateurs},
           {l:"Locations réalisées",v:stats.total_locations},
           {l:"Revenus de commission",v:stats.revenus_commission+" €"},
           {l:"Retours à temps",v:returnsStats?returnsStats.taux_ponctualite+" %":"—"},
@@ -1620,6 +1774,25 @@ function StatsScreen({showToast}){
             <canvas ref={catRef}></canvas>
           </div>
         </div>
+      </div>
+
+      {/* Détail des analyses : IA, expert, en attente, rejetés */}
+      <div style={{marginBottom:44}}>
+        <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,marginBottom:6}}>Résultat des analyses</h2>
+        <p style={{fontSize:12,color:C.muted,marginBottom:18}}>{v.taux_auto_validation} % des pièces sont validées sans intervention humaine.</p>
+        <div style={{display:"flex",height:14,marginBottom:20,background:"rgba(26,22,20,0.06)"}}>
+          {statusRows.filter(r=>r.n>0).map((r,i)=><div key={i} title={`${r.l} : ${r.n}`} style={{width:`${r.n/totStatus*100}%`,background:r.col}}/>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:"0 40px"}}>
+          {statusRows.map((r,i)=>
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,fontSize:13,marginBottom:10}}>
+              <span style={{width:10,height:10,background:r.col,flexShrink:0}}/>
+              <span style={{flex:1}}>{r.l}</span>
+              <span style={{color:C.muted,fontVariantNumeric:"tabular-nums"}}>{r.n}</span>
+            </div>
+          )}
+        </div>
+        {v.sans_analyse>0&&<p style={{fontSize:12,color:C.muted,marginTop:6}}>{v.sans_analyse} article{v.sans_analyse>1?"s":""} pas encore analysé{v.sans_analyse>1?"s":""}.</p>}
       </div>
 
       <div style={{marginBottom:44}}>
@@ -1693,6 +1866,364 @@ function StatsScreen({showToast}){
   </div>;
 }
 
+// ═══ ADMIN CONSOLE ═══
+const REJECT_MOTIFS = [
+  "Facture incohérente avec l'article",
+  "Photos insuffisantes ou de mauvaise qualité",
+  "Logo ou marquage suspect",
+  "Coutures ou finitions non conformes",
+  "Doublon détecté sur la plateforme",
+  "Autre",
+];
+
+const ACTION_LABELS = {
+  validate_article: "Article validé",
+  reject_article: "Article rejeté",
+  relaunch_verification: "Analyse relancée",
+  update_article: "Article modifié",
+  archive_article: "Article archivé",
+  restore_article: "Article restauré",
+  update_user: "Compte modifié",
+  suspend_user: "Compte suspendu",
+  update_transaction: "Statut de location modifié",
+};
+
+const adminLblStyle = {fontSize:11,color:"rgba(26,22,20,0.45)",display:"block",marginBottom:6};
+const adminInputStyle = {width:"100%",padding:"10px 12px",background:"rgba(26,22,20,0.04)",border:"1px solid rgba(26,22,20,0.1)",color:"#1A1614",fontSize:13,boxSizing:"border-box"};
+function smallBtn(C){ return {padding:"7px 14px",border:`1px solid ${C.border}`,background:"transparent",color:C.ink,cursor:"pointer",fontSize:11}; }
+function smallBtnDanger(C){ return {padding:"7px 14px",border:"1px solid rgba(192,96,90,0.4)",background:"transparent",color:C.red,cursor:"pointer",fontSize:11}; }
+
+function ConfirmDialog({message,confirmLabel="Confirmer",onConfirm,onCancel}){
+  if(!message) return null;
+  return <div style={{position:"fixed",inset:0,background:"rgba(26,22,20,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onCancel}>
+    <div onClick={e=>e.stopPropagation()} style={{background:"#FAF8F4",padding:32,maxWidth:440,width:"100%",boxShadow:"0 24px 60px rgba(26,22,20,0.3)"}}>
+      <p style={{fontSize:15,lineHeight:1.6,marginBottom:28,color:"#1A1614"}}>{message}</p>
+      <div style={{display:"flex",gap:12,justifyContent:"flex-end"}}>
+        <button onClick={onCancel} style={{padding:"10px 20px",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer",fontSize:12,letterSpacing:1}}>ANNULER</button>
+        <button onClick={onConfirm} style={{padding:"10px 20px",border:"none",background:"#6D2E46",color:"#FAF8F4",cursor:"pointer",fontSize:12,letterSpacing:1,fontWeight:600}}>{confirmLabel.toUpperCase()}</button>
+      </div>
+    </div>
+  </div>;
+}
+
+function AdminConsole({user,showToast,onChange}){
+  const C={gold:"#C9A84C",ink:"#1A1614",berry:"#6D2E46",muted:"rgba(26,22,20,0.45)",green:"#2D6A4F",amber:"#EF9F27",red:"#C0605A",border:"rgba(26,22,20,0.08)",card:"#FFFFFF"};
+  const TABS=[{id:"moderation",l:"Modération"},{id:"articles",l:"Articles"},{id:"users",l:"Utilisateurs"},{id:"transactions",l:"Locations"},{id:"audit",l:"Journal"}];
+  const [tab,setTab]=useState("moderation");
+  const [loading,setLoading]=useState(false);
+  const [errorTab,setErrorTab]=useState(false);
+
+  const [moderation,setModeration]=useState([]);
+  const [articles,setArticles]=useState([]);
+  const [users,setUsers]=useState([]);
+  const [txs,setTxs]=useState([]);
+  const [audit,setAudit]=useState([]);
+
+  const [artFilters,setArtFilters]=useState({statut:"",category:"",archived:""});
+  const [search,setSearch]=useState("");
+
+  const [confirmState,setConfirmState]=useState(null); // {message, confirmLabel, run}
+  const [rejectTarget,setRejectTarget]=useState(null);
+  const [motif,setMotif]=useState("");
+  const [editArticle,setEditArticle]=useState(null);
+  const [editForm,setEditForm]=useState({});
+
+  const adminApi=(path,opts={})=>{
+    const sep=path.includes("?")?"&":"?";
+    return api(`${path}${sep}admin_id=${user.id}`,opts);
+  };
+  const notifyChange=()=>{ onChange && onChange(); };
+
+  const load=(which)=>{
+    setLoading(true); setErrorTab(false);
+    let p;
+    if(which==="moderation") p=adminApi("/admin/moderation").then(setModeration);
+    else if(which==="articles"){
+      const params=[];
+      if(artFilters.statut) params.push(`statut=${artFilters.statut}`);
+      if(artFilters.category) params.push(`category=${artFilters.category}`);
+      if(artFilters.archived!=="") params.push(`archived=${artFilters.archived}`);
+      p=adminApi(`/admin/articles${params.length?"?"+params.join("&"):""}`).then(setArticles);
+    }
+    else if(which==="users") p=adminApi("/admin/users").then(setUsers);
+    else if(which==="transactions") p=adminApi("/admin/transactions").then(setTxs);
+    else p=adminApi("/admin/audit").then(setAudit);
+    p.catch(()=>setErrorTab(true)).finally(()=>setLoading(false));
+  };
+
+  useEffect(()=>{ load(tab); },[tab, artFilters.statut, artFilters.category, artFilters.archived]);
+
+  const askConfirm=(message,run,confirmLabel)=>setConfirmState({message,run,confirmLabel});
+  const runConfirm=async()=>{
+    const {run}=confirmState;
+    setConfirmState(null);
+    await run();
+  };
+
+  // ── Actions modération ──
+  const doValidate=(m)=>askConfirm(`« ${m.title} » de ${m.owner?.name||"ce propriétaire"} passe-t-il le contrôle ? L'article deviendra disponible à la location.`, async()=>{
+    try{ await adminApi(`/verification/${m.article_id}/expert-validate`,{method:"POST"}); showToast("✓ Article validé"); load("moderation"); notifyChange(); }
+    catch(e){ showToast("✗ "+e.message); }
+  }, "Oui, ça passe");
+
+  const doRelaunch=async(m)=>{
+    try{ await adminApi(`/verification/${m.article_id}/relaunch`,{method:"POST"}); showToast("✓ Analyse relancée"); load("moderation"); notifyChange(); }
+    catch(e){ showToast("✗ "+e.message); }
+  };
+
+  const confirmReject=async()=>{
+    if(!motif||!rejectTarget) return;
+    try{
+      await adminApi(`/verification/${rejectTarget.article_id}/expert-reject`,{method:"POST",body:{motif}});
+      showToast("✓ Article rejeté");
+      setRejectTarget(null); setMotif("");
+      load("moderation"); notifyChange();
+    } catch(e){ showToast("✗ "+e.message); }
+  };
+
+  // ── Actions articles ──
+  const toggleAvailable=async(a)=>{
+    try{
+      await adminApi(`/articles/${a.id}`,{method:"PATCH",body:{is_available:!a.is_available}});
+      showToast(a.is_available?"✓ Article dépublié":"✓ Article publié");
+      load("articles");
+    } catch(e){ showToast("✗ "+e.message); }
+  };
+  const doArchive=(a)=>askConfirm(`Supprimer « ${a.title} » de ${a.owner?.name||"ce propriétaire"} ? L'article disparaîtra du catalogue public. Cette action est réversible depuis « Restaurer ».`, async()=>{
+    try{ await adminApi(`/articles/${a.id}`,{method:"DELETE"}); showToast("✓ Article supprimé"); load("articles"); notifyChange(); }
+    catch(e){ showToast("✗ "+e.message); }
+  }, "Supprimer");
+  const doRestore=async(a)=>{
+    try{ await adminApi(`/articles/${a.id}/restore`,{method:"POST"}); showToast("✓ Article restauré"); load("articles"); notifyChange(); }
+    catch(e){ showToast("✗ "+e.message); }
+  };
+  const openEdit=(a)=>{ setEditArticle(a); setEditForm({title:a.title,brand:a.brand,model:a.model||"",category:a.category,price_per_day:a.price_per_day,condition:a.condition}); };
+  const saveEdit=async()=>{
+    try{
+      await adminApi(`/articles/${editArticle.id}`,{method:"PATCH",body:{...editForm,price_per_day:parseFloat(editForm.price_per_day)}});
+      showToast("✓ Article modifié");
+      setEditArticle(null);
+      load("articles");
+    } catch(e){ showToast("✗ "+e.message); }
+  };
+
+  // ── Actions utilisateurs ──
+  const changeRole=async(u,role)=>{
+    try{ await adminApi(`/users/${u.id}`,{method:"PATCH",body:{role}}); showToast("✓ Rôle mis à jour"); load("users"); }
+    catch(e){ showToast("✗ "+e.message); }
+  };
+  const doSuspend=(u)=>askConfirm(`Suspendre le compte de ${u.name} ? Il ne pourra plus se connecter.`, async()=>{
+    try{ await adminApi(`/users/${u.id}`,{method:"DELETE"}); showToast("✓ Utilisateur suspendu"); load("users"); }
+    catch(e){ showToast("✗ "+e.message); }
+  }, "Suspendre");
+  const doReactivate=async(u)=>{
+    try{ await adminApi(`/users/${u.id}`,{method:"PATCH",body:{is_active:true}}); showToast("✓ Utilisateur réactivé"); load("users"); }
+    catch(e){ showToast("✗ "+e.message); }
+  };
+
+  // ── Actions locations ──
+  const doTxStatus=(t,status,label)=>askConfirm(`${label} la location #${t.id} (${t.article?.title||"article"}) ?`, async()=>{
+    try{ await adminApi(`/transactions/${t.id}`,{method:"PATCH",body:{status}}); showToast("✓ Statut mis à jour"); load("transactions"); }
+    catch(e){ showToast("✗ "+e.message); }
+  }, label);
+
+  const catLabel=(id)=>{ const c=categories.find(c=>c.id===id); return c?c.label:id; };
+  const fmtDate=(d)=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
+
+  const filteredArticles = articles.filter(a=>{
+    if(!search) return true;
+    const s=search.toLowerCase();
+    return a.title.toLowerCase().includes(s) || a.brand.toLowerCase().includes(s) || (a.owner?.name||"").toLowerCase().includes(s);
+  });
+
+  const emptyBox=(msg)=><div style={{padding:60,textAlign:"center",color:C.muted,border:`1px dashed ${C.border}`}}>{msg}</div>;
+  const loadingBox=()=><div style={{padding:60,textAlign:"center",color:C.muted}}>Chargement…</div>;
+  const errorBox=()=><div style={{padding:60,textAlign:"center",color:C.red}}>Une erreur est survenue. <button onClick={()=>load(tab)} style={{marginLeft:8,color:C.gold,background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>Réessayer</button></div>;
+
+  return <div style={{background:"#FAF8F4",minHeight:"calc(100vh - 64px)",color:C.ink}}>
+    <div style={{maxWidth:1200,margin:"0 auto",padding:"48px clamp(16px,4vw,32px)"}}>
+      <div style={{fontSize:11,letterSpacing:4,color:C.gold,marginBottom:8}}>ADMINISTRATION</div>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:32,marginBottom:32}}>Console d'administration</h1>
+
+      <div style={{display:"flex",gap:8,borderBottom:`1px solid ${C.border}`,marginBottom:32,flexWrap:"wrap"}}>
+        {TABS.map(t=>
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"10px 18px",background:"none",border:"none",borderBottom:tab===t.id?`2px solid ${C.gold}`:"2px solid transparent",color:tab===t.id?C.gold:C.muted,fontSize:13,letterSpacing:.5,cursor:"pointer",fontWeight:tab===t.id?600:400}}>{t.l}{t.id==="moderation"&&moderation.length>0?` (${moderation.length})`:""}</button>
+        )}
+      </div>
+
+      {loading ? loadingBox() : errorTab ? errorBox() : <>
+        {tab==="moderation" && (moderation.length===0 ? emptyBox("Aucun article en attente d'examen.") :
+          <div style={{display:"grid",gap:16}}>
+            {moderation.map(m=>
+              <div key={m.article_id} style={{border:`1px solid ${C.border}`,padding:20,display:"grid",gridTemplateColumns:"90px 1fr 160px",gap:20,background:C.card}}>
+                <div style={{width:90,height:90,background:m.photo?`url(${m.photo}) center/cover`:"linear-gradient(160deg,#F0E8D8,#C4B89C)",flexShrink:0}}/>
+                <div>
+                  <div style={{fontSize:11,color:C.gold,letterSpacing:1}}>{m.brand?.toUpperCase()}</div>
+                  <div style={{fontSize:16,fontWeight:600,marginBottom:4}}>{m.title}{m.model?` — ${m.model}`:""}</div>
+                  <div style={{fontSize:12,color:C.muted,marginBottom:10}}>{m.price_per_day}€/jour · Déposé par {m.owner?.name||"—"} · {fmtDate(m.soumis_le)}</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                    {Object.entries(m.sous_scores).map(([k,v])=>{
+                      const faible=k===m.composant_le_plus_faible;
+                      return <span key={k} style={{fontSize:11,padding:"3px 9px",border:`1px solid ${faible?C.amber:C.border}`,color:faible?C.amber:C.muted,fontWeight:faible?700:400}}>{k} {v!=null?v.toFixed(2):"—"}</span>;
+                    })}
+                  </div>
+                  <div style={{fontSize:13}}>Score global : <strong style={{color:C.gold,fontSize:16}}>{m.score_global!=null?m.score_global.toFixed(2):"—"}</strong></div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  <button onClick={()=>doValidate(m)} style={{padding:"9px 0",border:"none",background:"rgba(45,106,79,0.12)",color:C.green,cursor:"pointer",fontSize:12,fontWeight:600}}>Ça passe</button>
+                  <button onClick={()=>setRejectTarget(m)} style={{padding:"9px 0",border:"1px solid rgba(192,96,90,0.4)",background:"transparent",color:C.red,cursor:"pointer",fontSize:12,fontWeight:600}}>Ça ne passe pas</button>
+                  <button onClick={()=>doRelaunch(m)} style={{padding:"9px 0",border:`1px solid ${C.border}`,background:"transparent",color:C.muted,cursor:"pointer",fontSize:12}}>Relancer l'analyse</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab==="articles" && <div>
+          <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap",alignItems:"center"}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un article, une marque, un propriétaire…" style={{flex:1,minWidth:220,padding:"10px 14px",background:"#fff",border:`1px solid ${C.border}`,fontSize:13}}/>
+            <select value={artFilters.statut} onChange={e=>setArtFilters({...artFilters,statut:e.target.value})} style={{padding:"10px 12px",border:`1px solid ${C.border}`,background:"#fff",fontSize:12}}>
+              <option value="">Tous les statuts</option>
+              <option value="verified">Authentifié</option>
+              <option value="review">En examen</option>
+              <option value="rejected">Rejeté</option>
+            </select>
+            <select value={artFilters.category} onChange={e=>setArtFilters({...artFilters,category:e.target.value})} style={{padding:"10px 12px",border:`1px solid ${C.border}`,background:"#fff",fontSize:12}}>
+              <option value="">Toutes catégories</option>
+              {categories.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+            <select value={artFilters.archived} onChange={e=>setArtFilters({...artFilters,archived:e.target.value})} style={{padding:"10px 12px",border:`1px solid ${C.border}`,background:"#fff",fontSize:12}}>
+              <option value="">Actifs et archivés</option>
+              <option value="false">Actifs uniquement</option>
+              <option value="true">Archivés uniquement</option>
+            </select>
+          </div>
+          {filteredArticles.length===0 ? emptyBox("Aucun article ne correspond à ces critères.") :
+          <div style={{display:"grid",gap:1,background:C.border}}>
+            {filteredArticles.map(a=>
+              <div key={a.id} style={{display:"grid",gridTemplateColumns:"56px 1fr 120px 100px 230px",gap:16,alignItems:"center",padding:14,background:a.is_archived?"rgba(26,22,20,0.03)":C.card}}>
+                <div style={{width:56,height:56,background:a.photo?`url(${a.photo}) center/cover`:"linear-gradient(160deg,#F0E8D8,#C4B89C)"}}/>
+                <div>
+                  <div style={{fontSize:11,color:C.gold}}>{a.brand}</div>
+                  <div style={{fontSize:14,fontWeight:500}}>{a.title}{a.is_archived?" (archivé)":""}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{catLabel(a.category)} · {a.owner?.name||"—"} · {a.price_per_day}€/jour</div>
+                </div>
+                <div style={{fontSize:11,color:C.muted}}>{a.verification_status==="verified"?"Authentifié":a.verification_status==="review"?"En examen":a.verification_status==="rejected"?"Rejeté":"—"}</div>
+                <div style={{fontSize:11,color:a.is_available?C.green:C.muted,fontWeight:600}}>{a.is_available?"Publié":"Dépublié"}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                  <button onClick={()=>openEdit(a)} style={smallBtn(C)}>Modifier</button>
+                  {!a.is_archived && <button onClick={()=>toggleAvailable(a)} style={smallBtn(C)}>{a.is_available?"Dépublier":"Publier"}</button>}
+                  {a.is_archived ? <button onClick={()=>doRestore(a)} style={smallBtn(C)}>Restaurer</button>
+                    : <button onClick={()=>doArchive(a)} style={smallBtnDanger(C)}>Supprimer</button>}
+                </div>
+              </div>
+            )}
+          </div>}
+        </div>}
+
+        {tab==="users" && (users.length===0 ? emptyBox("Aucun utilisateur.") :
+          <div style={{display:"grid",gap:1,background:C.border}}>
+            {users.map(u=>
+              <div key={u.id} style={{display:"grid",gridTemplateColumns:"1fr 150px 70px 70px 70px 130px",gap:16,alignItems:"center",padding:14,background:C.card,opacity:u.is_active?1:0.55}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:500}}>{u.name}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{u.email}</div>
+                </div>
+                <select value={u.role} onChange={e=>changeRole(u,e.target.value)} disabled={u.id===user.id} style={{padding:"6px 8px",border:`1px solid ${C.border}`,background:"#fff",fontSize:12}}>
+                  <option value="renter">Locataire</option>
+                  <option value="owner">Propriétaire</option>
+                  <option value="both">Les deux</option>
+                  <option value="admin">Administrateur</option>
+                </select>
+                <div style={{fontSize:12,color:C.muted}}>{u.trust_score?.toFixed(2)}</div>
+                <div style={{fontSize:12,color:C.muted}}>{u.nb_articles} art.</div>
+                <div style={{fontSize:12,color:C.muted}}>{u.nb_locations} loc.</div>
+                <div style={{display:"flex",justifyContent:"flex-end"}}>
+                  {u.id===user.id ? <span style={{fontSize:11,color:C.muted}}>Vous</span>
+                    : u.is_active ? <button onClick={()=>doSuspend(u)} style={smallBtnDanger(C)}>Suspendre</button>
+                    : <button onClick={()=>doReactivate(u)} style={smallBtn(C)}>Réactiver</button>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab==="transactions" && (txs.length===0 ? emptyBox("Aucune location.") :
+          <div style={{display:"grid",gap:1,background:C.border}}>
+            {txs.map(t=>
+              <div key={t.id} style={{display:"grid",gridTemplateColumns:"1fr 140px 140px 90px 100px 170px",gap:16,alignItems:"center",padding:14,background:C.card}}>
+                <div style={{fontSize:14}}>{t.article?.title||"—"}</div>
+                <div style={{fontSize:12,color:C.muted}}>{t.owner?.name||"—"}</div>
+                <div style={{fontSize:12,color:C.muted}}>{t.renter?.name||"—"}</div>
+                <div style={{fontSize:13,fontWeight:600,color:C.gold}}>{t.total_amount}€</div>
+                <div style={{fontSize:11,color:C.muted,textTransform:"uppercase"}}>{t.status}</div>
+                <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                  {["pending","confirmed","active","return_pending"].includes(t.status) && <>
+                    <button onClick={()=>doTxStatus(t,"cancelled","Annuler")} style={smallBtnDanger(C)}>Annuler</button>
+                    <button onClick={()=>doTxStatus(t,"completed","Clôturer")} style={smallBtn(C)}>Clôturer</button>
+                  </>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab==="audit" && (audit.length===0 ? emptyBox("Aucune action enregistrée.") :
+          <div style={{display:"grid",gap:1,background:C.border}}>
+            {audit.map(a=>
+              <div key={a.id} style={{display:"grid",gridTemplateColumns:"150px 140px 1fr",gap:16,padding:"12px 14px",background:C.card,fontSize:12}}>
+                <div style={{color:C.muted}}>{new Date(a.created_at).toLocaleString("fr-FR")}</div>
+                <div style={{color:C.ink,fontWeight:500}}>{a.admin}</div>
+                <div style={{color:C.muted}}>{ACTION_LABELS[a.action]||a.action}{a.detail?` — ${a.detail}`:""}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </>}
+    </div>
+
+    <ConfirmDialog message={confirmState?.message} confirmLabel={confirmState?.confirmLabel} onConfirm={runConfirm} onCancel={()=>setConfirmState(null)}/>
+
+    {rejectTarget && <div style={{position:"fixed",inset:0,background:"rgba(26,22,20,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>{setRejectTarget(null);setMotif("");}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#FAF8F4",padding:32,maxWidth:440,width:"100%",boxShadow:"0 24px 60px rgba(26,22,20,0.3)"}}>
+        <p style={{fontSize:15,marginBottom:16}}>« {rejectTarget.title} » de {rejectTarget.owner?.name||"ce propriétaire"} ne passe pas le contrôle ? Choisissez le motif :</p>
+        <select value={motif} onChange={e=>setMotif(e.target.value)} style={{width:"100%",padding:"10px 12px",border:`1px solid ${C.border}`,fontSize:13,marginBottom:20}}>
+          <option value="">Choisir un motif…</option>
+          {REJECT_MOTIFS.map(m=><option key={m} value={m}>{m}</option>)}
+        </select>
+        <div style={{display:"flex",gap:12,justifyContent:"flex-end"}}>
+          <button onClick={()=>{setRejectTarget(null);setMotif("");}} style={{padding:"10px 20px",border:`1px solid ${C.border}`,background:"transparent",color:C.ink,cursor:"pointer",fontSize:12}}>ANNULER</button>
+          <button onClick={confirmReject} disabled={!motif} style={{padding:"10px 20px",border:"none",background:motif?C.red:C.border,color:motif?"#fff":C.muted,cursor:motif?"pointer":"default",fontSize:12,fontWeight:600}}>NON, ÇA NE PASSE PAS</button>
+        </div>
+      </div>
+    </div>}
+
+    {editArticle && <div style={{position:"fixed",inset:0,background:"rgba(26,22,20,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setEditArticle(null)}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#FAF8F4",padding:32,maxWidth:480,width:"100%",boxShadow:"0 24px 60px rgba(26,22,20,0.3)",display:"grid",gap:14}}>
+        <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>Modifier l'article</div>
+        <div><label style={adminLblStyle}>Titre</label><input value={editForm.title} onChange={e=>setEditForm({...editForm,title:e.target.value})} style={adminInputStyle}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div><label style={adminLblStyle}>Marque</label><input value={editForm.brand} onChange={e=>setEditForm({...editForm,brand:e.target.value})} style={adminInputStyle}/></div>
+          <div><label style={adminLblStyle}>Modèle</label><input value={editForm.model} onChange={e=>setEditForm({...editForm,model:e.target.value})} style={adminInputStyle}/></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div><label style={adminLblStyle}>Catégorie</label>
+            <select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})} style={adminInputStyle}>
+              {categories.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+          </div>
+          <div><label style={adminLblStyle}>Prix / jour (€)</label><input type="number" value={editForm.price_per_day} onChange={e=>setEditForm({...editForm,price_per_day:e.target.value})} style={adminInputStyle}/></div>
+        </div>
+        <div><label style={adminLblStyle}>État</label><input value={editForm.condition} onChange={e=>setEditForm({...editForm,condition:e.target.value})} style={adminInputStyle}/></div>
+        <div style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:8}}>
+          <button onClick={()=>setEditArticle(null)} style={{padding:"10px 20px",border:`1px solid ${C.border}`,background:"transparent",color:C.ink,cursor:"pointer",fontSize:12}}>ANNULER</button>
+          <button onClick={saveEdit} style={{padding:"10px 20px",border:"none",background:C.gold,color:C.ink,cursor:"pointer",fontSize:12,fontWeight:600}}>ENREGISTRER</button>
+        </div>
+      </div>
+    </div>}
+  </div>;
+}
+
 // ═══ APP ═══
 function App(){
   const [screen,_setScreen]=useState(SCREENS.AUTH);
@@ -1726,17 +2257,31 @@ function App(){
   const [selectedArticle,setSelectedArticle]=useState(null);
   const [txData,setTxData]=useState(null);
   const [toast,setToast]=useState(null);
-  const [stats,setStats]=useState({articles:0});
+  const [stats,setStats]=useState(null);
+  const [moderationCount,setModerationCount]=useState(0);
   const showToast=useCallback(msg=>{setToast(msg);setTimeout(()=>setToast(null),3500);},[]);
+
+  // Nombre d'articles en attente d'examen — affiché en badge dans la nav
+  // pour un admin. Rafraîchi après connexion et après chaque action prise
+  // depuis la console (validation, rejet, archivage...).
+  const refreshModerationCount = useCallback((forUser)=>{
+    const u = forUser || user;
+    if(!u || u.role!=="admin"){ setModerationCount(0); return; }
+    api(`/admin/moderation?admin_id=${u.id}`).then(d=>setModerationCount(d.length)).catch(()=>{});
+  },[user]);
 
   const handleLogin = async (u) => {
     setUser(u);
     setScreen(SCREENS.LANDING);
     try {
-      const arts = await api("/articles/?verified_only=false&limit=50");
+      const [arts, platformStats] = await Promise.all([
+        api("/articles/?verified_only=false&limit=50"),
+        api("/articles/platform/stats"),
+      ]);
       setArticles(arts);
-      setStats({articles:arts.length});
+      setStats(platformStats);
     } catch(e) {}
+    refreshModerationCount(u);
   };
 
   const handleLogout = () => {
@@ -1751,17 +2296,19 @@ function App(){
   return <div>
     {screen!==SCREENS.AUTH&&<ScrollProgress/>}
     {screen===SCREENS.AUTH&&<AuthScreen onLogin={handleLogin} showToast={showToast}/>}
-    {screen!==SCREENS.AUTH&&<Nav screen={screen} setScreen={setScreen} user={user} onLogout={handleLogout}/>}
+    {screen!==SCREENS.AUTH&&<Nav screen={screen} setScreen={setScreen} user={user} onLogout={handleLogout} moderationCount={moderationCount}/>}
     {screen===SCREENS.LANDING&&<Landing setScreen={setScreen} articles={articles} stats={stats}/>}
     {screen===SCREENS.OWNER_VERIFY&&<OwnerVerify setScreen={setScreen} setVerifResult={setVerifResult} showToast={showToast} user={user}/>}
-    {screen===SCREENS.OWNER_RESULT&&<OwnerResult setScreen={setScreen} verifResult={verifResult} showToast={showToast}/>}
+    {screen===SCREENS.OWNER_RESULT&&<OwnerResult setScreen={setScreen} verifResult={verifResult}/>}
     {screen===SCREENS.OWNER_DASHBOARD&&<OwnerDashboard setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_BROWSE&&<RenterBrowse setScreen={setScreen} articles={articles} setSelectedArticle={setSelectedArticle}/>}
     {screen===SCREENS.RENTER_DETAIL&&<RenterDetail setScreen={setScreen} article={selectedArticle} showToast={showToast} user={user} setTxData={setTxData}/>}
-    {screen===SCREENS.RENTER_PAYMENT&&<RenterPayment setScreen={setScreen} article={selectedArticle} txData={txData} showToast={showToast}/>}
+    {screen===SCREENS.RENTER_PAYMENT&&<RenterPayment setScreen={setScreen} article={selectedArticle} txData={txData} showToast={showToast} user={user}/>}
     {screen===SCREENS.RENTER_PROFILE&&<RenterProfile setScreen={setScreen} user={user} showToast={showToast}/>}
     {screen===SCREENS.RENTER_RETURN&&<RenterReturn setScreen={setScreen} showToast={showToast}/>}
+    {screen===SCREENS.MODEL_IA&&<ModelIA/>}
     {screen===SCREENS.STATS&&(user&&user.role==="admin"?<StatsScreen showToast={showToast}/>:<div style={{minHeight:"calc(100vh - 64px)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(26,22,20,0.4)",fontSize:14}}>Accès réservé aux administrateurs.</div>)}
+    {screen===SCREENS.ADMIN_CONSOLE&&(user&&user.role==="admin"?<AdminConsole user={user} showToast={showToast} onChange={()=>refreshModerationCount(user)}/>:<div style={{minHeight:"calc(100vh - 64px)",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(26,22,20,0.4)",fontSize:14}}>Accès réservé aux administrateurs.</div>)}
     {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
   </div>
 }
