@@ -89,7 +89,9 @@ async function api(path, opts = {}) {
     // En HTTP/2 (Railway), statusText est vide : sans message du serveur,
     // on affiche au moins le code pour ne jamais laisser un message vide.
     const detail = typeof e.detail === "string" ? e.detail : null;
-    throw new Error(detail || res.statusText || (res.status >= 500 ? `erreur du serveur (code ${res.status})` : `erreur ${res.status}`));
+    const err = new Error(detail || res.statusText || (res.status >= 500 ? `erreur du serveur (code ${res.status})` : `erreur ${res.status}`));
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -754,6 +756,13 @@ function Landing({setScreen,articles,stats}){
 }
 
 // ═══ OWNER VERIFY ═══
+// Mêmes étapes, dans le même ordre, que ETAPES dans app/routers/verification.py
+const ETAPES_VERIF = [
+  ["qualite","Contrôle qualité des photos"],["authenticite","Score d'authenticité"],
+  ["logo","Logo et monogramme"],["coutures","Coutures et finitions"],
+  ["texture","Texture des matériaux"],["etiquette","Étiquette et numéro de série"],
+  ["regles","Règles métier"],["facture","Facture d'achat"],
+];
 function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   const [step,setStep]=useState(0);
   const [photos,setPhotos]=useState([null,null,null,null]);
@@ -765,9 +774,14 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
   const [price,setPrice]=useState("");
   const [analyzing,setAnalyzing]=useState(false);
   const [verifError,setVerifError]=useState("");
-  const [progress,setProgress]=useState(0);
-  const [pLabel,setPLabel]=useState("");
   const [articleId,setArticleId]=useState(null);
+  // Suivi de l'analyse : étapes réelles lues sur le serveur, jamais simulées
+  const [suivi,setSuivi]=useState(null);
+  const [phase,setPhase]=useState("analyse"); // analyse | long (>45 s) | silence (>90 s) | erreur
+  const [erreurAnalyse,setErreurAnalyse]=useState("");
+  const [ecoule,setEcoule]=useState(0);
+  const pollRef=React.useRef(null), tickRef=React.useRef(null), mountedRef=React.useRef(true), doneRef=React.useRef(false), postPerduRef=React.useRef(false);
+  useEffect(()=>{ mountedRef.current=true; return ()=>{ mountedRef.current=false; clearInterval(pollRef.current); clearInterval(tickRef.current); }; },[]);
 
   // Les photos de téléphone font souvent 4000 px et plusieurs Mo : on les
   // réduit à 1600 px (JPEG) avant l'envoi, ce qui allège l'analyse et la
@@ -852,26 +866,62 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
     }
   };
 
-  const startAnalysis = async () => {
-    setAnalyzing(true);
-    const labels=["Vérification pièce d'identité...","Contrôle facture d'achat...","Contrôle qualité image...","Classification CNN globale...","Analyse du logo...","Vérification des coutures...","Analyse texture matériaux...","Lecture étiquette OCR...","Règles métier...","Calcul du score final..."];
-    let p=0;
-    const iv=setInterval(()=>{p+=Math.random()*12+4;if(p>95)p=95;setProgress(Math.round(p));setPLabel(labels[Math.min(Math.floor(p/10),labels.length-1)]);},400);
-    try {
-      const res = await api("/verification/launch",{method:"POST",body:{article_id:articleId,photo_ids:[1,2,3,4]}});
-      clearInterval(iv); setProgress(100); setPLabel("Terminé !");
-      showToast(`✓ Vérification terminée — Score: ${res.scores.global}`);
-      setTimeout(()=>{ setVerifResult(res); setScreen(SCREENS.OWNER_RESULT); },800);
-    } catch(e) {
-      // On revient aux photos avec la raison affichée, au lieu de laisser
-      // l'écran figé sur son pourcentage.
-      clearInterval(iv);
-      setAnalyzing(false); setProgress(0); setStep(2);
-      window.scrollTo({top:0,behavior:"smooth"});
-      setVerifError(e.message === "Failed to fetch" || e.message === "Bad Gateway" || e.message === "Service Unavailable"
-        ? "Le serveur n'a pas répondu pendant l'analyse. Patientez quelques secondes puis relancez la vérification."
-        : "La vérification n'a pas abouti : " + e.message);
-    }
+  const stopSuivi = () => { clearInterval(pollRef.current); clearInterval(tickRef.current); pollRef.current=null; tickRef.current=null; };
+
+  const finirAnalyse = (res) => {
+    if(doneRef.current||!mountedRef.current) return;
+    doneRef.current=true; stopSuivi();
+    setSuivi(s=>({...(s||{}),etat:"termine",etapes:ETAPES_VERIF.map(([cle,libelle])=>({cle,libelle,statut:"termine"}))}));
+    showToast("✓ Vérification terminée");
+    setTimeout(()=>{ if(mountedRef.current){ setVerifResult(res); setScreen(SCREENS.OWNER_RESULT); } },700);
+  };
+
+  const echecAnalyse = (message) => {
+    if(doneRef.current||!mountedRef.current) return;
+    doneRef.current=true; stopSuivi();
+    setPhase("erreur");
+    setErreurAnalyse(message==="reseau"
+      ? "La connexion avec le serveur a été perdue pendant l'analyse. Vérifiez votre connexion puis réessayez."
+      : message==="serveur"
+        ? "Un problème est survenu sur nos serveurs pendant l'analyse. Réessayez dans quelques instants."
+        : "La vérification n'a pas abouti : " + message);
+  };
+
+  // L'analyse tourne dans la requête POST, qui ne répond qu'à la fin. On
+  // interroge en parallèle l'avancement réel toutes les 2 secondes.
+  const startAnalysis = () => {
+    stopSuivi();
+    doneRef.current=false; postPerduRef.current=false;
+    setAnalyzing(true); setPhase("analyse"); setErreurAnalyse(""); setSuivi(null); setEcoule(0);
+    const debut=Date.now();
+    tickRef.current=setInterval(()=>{
+      const s=Math.floor((Date.now()-debut)/1000);
+      setEcoule(s);
+      if(s>=45) setPhase(p=>p==="analyse"?"long":p);
+      if(s>=90){ stopSuivi(); setPhase(p=>(p==="analyse"||p==="long")?"silence":p); }
+    },1000);
+    let echecsSuivi=0;
+    pollRef.current=setInterval(async()=>{
+      try{
+        const p=await api(`/verification/${articleId}/progress`);
+        echecsSuivi=0;
+        if(doneRef.current||!mountedRef.current||p.etat==="inconnu") return;
+        setSuivi(p);
+        if(p.etat==="termine"&&p.resultat) finirAnalyse(p.resultat);
+        else if(p.etat==="echec") echecAnalyse(p.erreur||"erreur inconnue");
+      }catch{
+        echecsSuivi++;
+        if(echecsSuivi>=3&&postPerduRef.current) echecAnalyse("reseau");
+      }
+    },2000);
+    api("/verification/launch",{method:"POST",body:{article_id:articleId,photo_ids:[1,2,3,4]}})
+      .then(finirAnalyse)
+      .catch(e=>{
+        // Connexion coupée ou passerelle indisponible : l'analyse peut
+        // continuer sur le serveur, on s'en remet au suivi d'avancement.
+        if(!e.status||[502,503,504].includes(e.status)) postPerduRef.current=true;
+        else echecAnalyse(e.status>=500 ? "serveur" : e.message);
+      });
   };
 
   const launchVerification = async () => {
@@ -966,16 +1016,60 @@ function OwnerVerify({setScreen,setVerifResult,showToast,user}){
         <button onClick={launchVerification} disabled={nbPhotos<3} style={{fontSize:13,letterSpacing:1,padding:"14px 0",border:"none",width:"100%",background:nbPhotos>=3?"#C9A84C":"rgba(26,22,20,0.08)",color:nbPhotos>=3?"#1A1614":"rgba(26,22,20,0.25)",cursor:nbPhotos>=3?"pointer":"default",fontWeight:600}}>LANCER LA VÉRIFICATION IA →</button>
       </div>}
 
-      {/* STEP 3 — Analyse */}
-      {step===3&&analyzing&&<div style={{textAlign:"center",padding:"60px 0"}}>
-        <div style={{width:120,height:120,borderRadius:"50%",margin:"0 auto 32px",border:"2px solid rgba(201,168,76,0.2)",position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{position:"absolute",inset:0,borderRadius:"50%",border:"2px solid transparent",borderTopColor:"#C9A84C",animation:"spin 1s linear infinite"}}/>
-          <span style={{fontFamily:"'Montserrat',sans-serif",fontWeight:700,fontSize:28,color:"#C9A84C"}}>{progress}%</span>
-        </div>
-        <div style={{fontSize:14,color:"#C9A84C",marginBottom:8}}>{pLabel}</div>
-        <div style={{width:300,height:3,background:"rgba(26,22,20,0.06)",margin:"16px auto",borderRadius:2}}><div style={{height:"100%",background:"#C9A84C",borderRadius:2,width:`${progress}%`,transition:"width 0.3s"}}/></div>
-        <div style={{fontSize:11,color:"rgba(26,22,20,0.3)",marginTop:16}}>Analyse de l'article en cours...</div>
-      </div>}
+      {/* STEP 3 — Analyse : étapes réelles transmises par le serveur */}
+      {step===3&&analyzing&&(()=>{
+        const etapes = suivi?.etapes || ETAPES_VERIF.map(([cle,libelle],i)=>({cle,libelle,statut:i===0?"en_cours":"en_attente"}));
+        const termine = etapes.every(e=>e.statut==="termine");
+        const allerEspace = ()=>setScreen(SCREENS.OWNER_DASHBOARD);
+        const btnPrimaire = {fontSize:12,letterSpacing:1,padding:"12px 22px",border:"none",background:"#C9A84C",color:"#1A1614",cursor:"pointer",fontWeight:600};
+        const btnSecondaire = {fontSize:12,letterSpacing:1,padding:"12px 22px",border:"1px solid rgba(26,22,20,0.15)",background:"transparent",color:"#1A1614",cursor:"pointer"};
+        return <div style={{padding:"8px 0 40px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:16,marginBottom:20,flexWrap:"wrap"}}>
+            <h2 style={{fontFamily:"'Montserrat',sans-serif",fontWeight:600,fontSize:20,margin:0}}>{termine?"Analyse terminée":phase==="erreur"?"Analyse interrompue":"Analyse de votre article"}</h2>
+            <span aria-live="polite" style={{fontSize:12,color:"rgba(26,22,20,0.45)",fontVariantNumeric:"tabular-nums"}}>{termine?"Ouverture du résultat…":`Commencée il y a ${ecoule} s`}</span>
+          </div>
+
+          <ol style={{listStyle:"none",margin:0,padding:0,border:"1px solid rgba(26,22,20,0.08)"}}>
+            {etapes.map((e,i)=>{
+              const enCours = e.statut==="en_cours" && phase!=="erreur";
+              return <li key={e.cle} style={{display:"grid",gridTemplateColumns:"22px 1fr auto",alignItems:"center",gap:14,padding:"13px 18px",borderTop:i?"1px solid rgba(26,22,20,0.06)":"none",background:enCours?"rgba(201,168,76,0.05)":"transparent"}}>
+                {e.statut==="termine"
+                  ? <span aria-hidden="true" style={{width:18,height:18,borderRadius:"50%",background:"rgba(45,106,79,0.12)",color:"#2D6A4F",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>✓</span>
+                  : enCours
+                    ? <span aria-hidden="true" style={{width:16,height:16,borderRadius:"50%",border:"2px solid rgba(201,168,76,0.25)",borderTopColor:"#C9A84C",animation:"spin 1.1s linear infinite"}}/>
+                    : <span aria-hidden="true" style={{width:14,height:14,borderRadius:"50%",border:"1.5px solid rgba(26,22,20,0.18)",marginLeft:2}}/>}
+                <span style={{fontSize:14,color:e.statut==="en_attente"?"rgba(26,22,20,0.45)":"#1A1614"}}>
+                  {e.libelle}
+                  {enCours&&e.cle==="authenticite"&&suivi?.chargement_modele&&<span style={{display:"block",fontSize:12,color:"rgba(26,22,20,0.5)",marginTop:3,lineHeight:1.5}}>Premier passage depuis la mise à jour du service : le modèle d'authentification se charge. Cette étape peut prendre jusqu'à une minute.</span>}
+                </span>
+                <span style={{fontSize:11,letterSpacing:1,color:e.statut==="termine"?"#2D6A4F":enCours?"#8a6e26":"rgba(26,22,20,0.35)"}}>{e.statut==="termine"?"TERMINÉ":enCours?"EN COURS":"EN ATTENTE"}</span>
+              </li>;
+            })}
+          </ol>
+
+          {phase==="long"&&<div role="status" style={{marginTop:20,padding:"16px 18px",background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.3)",fontSize:13,lineHeight:1.6}}>
+            <p style={{margin:"0 0 12px"}}>L'analyse prend plus de temps que d'habitude. Elle se poursuit sur nos serveurs : vous pouvez quitter cette page, le résultat apparaîtra dans votre espace propriétaire.</p>
+            <button onClick={allerEspace} style={btnPrimaire}>VOIR MON ESPACE PROPRIÉTAIRE</button>
+          </div>}
+
+          {phase==="silence"&&<div role="status" style={{marginTop:20,padding:"16px 18px",background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.3)",fontSize:13,lineHeight:1.6}}>
+            <p style={{margin:"0 0 12px"}}>Cette page ne suit plus l'analyse, qui continue sur nos serveurs. Son résultat sera visible dans votre espace propriétaire dès qu'il sera prêt.</p>
+            <button onClick={allerEspace} style={btnPrimaire}>VOIR MON ESPACE PROPRIÉTAIRE</button>
+          </div>}
+
+          {phase==="erreur"&&<div role="alert" style={{marginTop:20,padding:"16px 18px",background:"rgba(192,96,90,0.08)",border:"1px solid rgba(192,96,90,0.3)",fontSize:13,lineHeight:1.6,color:"#7a2c27"}}>
+            <p style={{margin:"0 0 12px"}}>{erreurAnalyse}</p>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button onClick={startAnalysis} style={btnPrimaire}>RÉESSAYER</button>
+              <button onClick={()=>{setAnalyzing(false);setStep(2);}} style={btnSecondaire}>MODIFIER LES PHOTOS</button>
+            </div>
+          </div>}
+
+          {phase==="analyse"&&!termine&&<p style={{marginTop:18,fontSize:12,color:"rgba(26,22,20,0.45)"}}>
+            Vous pouvez quitter cette page sans interrompre l'analyse : <button onClick={allerEspace} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontSize:12,color:"#8a6e26",textDecoration:"underline",textUnderlineOffset:3}}>voir mon espace propriétaire</button>
+          </p>}
+        </div>;
+      })()}
     </div>
   </div>
 }
@@ -1236,6 +1330,15 @@ function OwnerDashboard({setScreen,user,showToast}){
     api(`/transactions/user/${user.id}?role=owner`).then(setTransactions).catch(()=>setTransactions([]));
   },[user]);
 
+  // Tant qu'une analyse tourne, on rafraîchit la liste pour faire apparaître
+  // le résultat sans que le propriétaire ait à recharger la page.
+  const analyseEnCours = articles.some(a=>a.verification_en_cours);
+  useEffect(()=>{
+    if(!analyseEnCours) return;
+    const iv=setInterval(loadArticles,4000);
+    return ()=>clearInterval(iv);
+  },[analyseEnCours,user]);
+
   const totalRevenue = transactions.reduce((s,t)=>s+(t.total||0),0);
   const activeRentals = transactions.filter(t=>t.status==="active"||t.status==="confirmed").length;
 
@@ -1279,8 +1382,8 @@ function OwnerDashboard({setScreen,user,showToast}){
           <div style={{textAlign:"right"}}>
             {(()=>{
               const st=a.verification_status;
-              const label=a.is_available?"DISPONIBLE":st==="review"?"EN EXAMEN":st==="rejected"?"REJETÉ":"INDISPONIBLE";
-              const col=a.is_available?"#5DCAA5":st==="rejected"?"#E08585":"#EF9F27";
+              const label=a.verification_en_cours?"ANALYSE EN COURS":a.is_available?"DISPONIBLE":st==="review"?"EN EXAMEN":st==="rejected"?"REJETÉ":"INDISPONIBLE";
+              const col=a.verification_en_cours?"#8a6e26":a.is_available?"#5DCAA5":st==="rejected"?"#E08585":"#EF9F27";
               return <span style={{padding:"4px 10px",fontSize:10,letterSpacing:1,border:"1px solid",borderColor:col,color:col,opacity:0.95}}>{label}</span>;
             })()}
             {a.verification_score&&<div style={{fontSize:11,color:"rgba(26,22,20,0.35)",marginTop:6}}>Score IA : {a.verification_score.toFixed(2)}</div>}
