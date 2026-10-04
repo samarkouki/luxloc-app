@@ -48,6 +48,11 @@ WEIGHTS = {"cnn": 0.22, "logo": 0.16, "stitching": 0.12,
 # l'étape réellement en cours. Le suivi vit en mémoire du process : il
 # suffit avec un seul process uvicorn (le cas sur Railway) et disparaît à
 # un redémarrage — le résultat final, lui, est en base.
+# LIMITE : avec plusieurs process (uvicorn --workers N, ou plusieurs
+# instances Railway), l'interrogation peut tomber sur un process qui n'a
+# pas lancé l'analyse : l'écran ne verrait alors aucune progression et
+# l'espace propriétaire n'afficherait pas « analyse en cours ». Avant de
+# passer à plusieurs process, déplacer ce suivi en base ou dans Redis.
 ETAPES = [
     ("qualite", "Contrôle qualité des photos"),
     ("authenticite", "Score d'authenticité"),
