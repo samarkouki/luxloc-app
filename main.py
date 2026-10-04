@@ -488,6 +488,14 @@ def health_schema():
             "random_forest_disponible": rf_predict.is_model_available(),
         },
         "email_reinitialisation_configure": mailer.is_configured(),
+        # Processeurs vus par le process et réellement alloués au conteneur :
+        # un écart important explique les lenteurs du modèle (voir
+        # app/ml/authenticator.py, torch_threads).
+        "cpu": {
+            "processeurs_visibles": os.cpu_count(),
+            "quota_conteneur": efficientnet.cpu_quota(),
+            "threads_modele": efficientnet.torch_threads(),
+        },
     }
 
 
