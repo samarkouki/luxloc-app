@@ -121,6 +121,29 @@ def unload_if_idle():
     return False
 
 
+def cpu_quota():
+    """Nombre de processeurs réellement alloués par le conteneur (cgroup v2), ou None."""
+    try:
+        with open("/sys/fs/cgroup/cpu.max") as f:
+            quota, period = f.read().split()[:2]
+        return None if quota == "max" else round(int(quota) / int(period), 2)
+    except (OSError, ValueError):
+        return None
+
+
+def torch_threads():
+    """
+    Threads de calcul pour torch : TORCH_THREADS si défini, sinon le quota
+    du conteneur arrondi à l'inférieur, plafonné à 2 (au-delà, le gain est
+    faible pour une image à la fois, et le risque de bridage remonte).
+    """
+    env = os.getenv("TORCH_THREADS")
+    if env and env.isdigit() and int(env) > 0:
+        return int(env)
+    quota = cpu_quota()
+    return max(1, min(2, int(quota))) if quota else 2
+
+
 def _load():
     global _predictor, _load_attempted, _load_error
     with _lock:
@@ -130,6 +153,15 @@ def _load():
             return _predictor
         _load_attempted = True
         try:
+            import torch
+            # Par défaut torch lance autant de threads que de processeurs
+            # visibles. Dans un conteneur Railway, ce sont ceux de la machine
+            # hôte, alors que le quota CPU n'en autorise qu'une fraction : les
+            # threads épuisent le quota et le noyau bride le process. Mesuré en
+            # production : 0,5 s pour 4 photos en temps normal, 35 à 37 s une
+            # fois bridé. On limite donc le nombre de threads.
+            torch.set_num_threads(torch_threads())
+            torch.set_num_interop_threads(1)
             from luxury_authenticator_v1.inference.predict import Predictor
             _predictor = Predictor(MODEL_PATH)
             _touch()
