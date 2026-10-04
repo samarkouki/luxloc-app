@@ -27,6 +27,7 @@ from app.services import invoice_analysis as inv
 from app.services import brand_signature as brand_sig_mod
 from app.ml import predict as ml_predict
 from app.ml import authenticator as efficientnet
+import threading
 import time
 import traceback
 
@@ -38,9 +39,100 @@ WEIGHTS = {"cnn": 0.22, "logo": 0.16, "stitching": 0.12,
            "texture": 0.12, "label": 0.08, "rules": 0.10, "invoice": 0.20}
 
 
+# ════════════════════════════════════════
+# SUIVI DE PROGRESSION
+# ════════════════════════════════════════
+# La vérification tient dans une seule requête, qui ne répond qu'à la fin
+# (jusqu'à une minute au premier chargement du modèle). Pendant ce temps,
+# l'écran du propriétaire interroge GET /{article_id}/progress pour afficher
+# l'étape réellement en cours. Le suivi vit en mémoire du process : il
+# suffit avec un seul process uvicorn (le cas sur Railway) et disparaît à
+# un redémarrage — le résultat final, lui, est en base.
+ETAPES = [
+    ("qualite", "Contrôle qualité des photos"),
+    ("authenticite", "Score d'authenticité"),
+    ("logo", "Logo et monogramme"),
+    ("coutures", "Coutures et finitions"),
+    ("texture", "Texture des matériaux"),
+    ("etiquette", "Étiquette et numéro de série"),
+    ("regles", "Règles métier"),
+    ("facture", "Facture d'achat"),
+]
+_CLES_ETAPES = [cle for cle, _ in ETAPES]
+_progress = {}
+_progress_lock = threading.Lock()
+_PROGRESS_TTL = 15 * 60
+
+
+def _progress_set(article_id, **fields):
+    with _progress_lock:
+        now = time.time()
+        for aid in [a for a, p in _progress.items() if now - p["maj"] > _PROGRESS_TTL]:
+            del _progress[aid]
+        entry = _progress.setdefault(article_id, {})
+        entry.update(fields, maj=now)
+
+
+def _etape(article_id, cle, **extra):
+    _progress_set(article_id, etape=cle, **extra)
+
+
+def analyse_en_cours(article_id):
+    """Vrai si une vérification de cet article est en train de tourner."""
+    with _progress_lock:
+        p = _progress.get(article_id)
+        return bool(p and p.get("etat") == "en_cours")
+
+
 @router.post("/launch", status_code=201)
 def launch_verification(request: VerificationRequest, db: Session = Depends(get_db)):
     """Lance le pipeline de vérification IA sur un article."""
+    aid = request.article_id
+    _progress_set(aid, etat="en_cours", etape=_CLES_ETAPES[0], debut=time.time(),
+                  chargement_modele=False, resultat=None, erreur=None)
+    try:
+        result = _run_verification(request, db)
+    except HTTPException as e:
+        _progress_set(aid, etat="echec", erreur=str(e.detail))
+        raise
+    except Exception:
+        _progress_set(aid, etat="echec", erreur="serveur")
+        raise
+    _progress_set(aid, etat="termine", etape=None, resultat=result)
+    return result
+
+
+@router.get("/{article_id}/progress")
+def verification_progress(article_id: int):
+    """
+    Avancement réel de la vérification d'un article : étape en cours, étapes
+    terminées, et le résultat complet une fois l'analyse finie (le même que
+    celui renvoyé par POST /launch).
+    """
+    with _progress_lock:
+        p = dict(_progress.get(article_id) or {})
+    if not p:
+        return {"etat": "inconnu"}
+    courante = p.get("etape")
+    index = _CLES_ETAPES.index(courante) if courante in _CLES_ETAPES else len(_CLES_ETAPES)
+    if p["etat"] == "termine":
+        index = len(_CLES_ETAPES)
+    etapes = [{
+        "cle": cle,
+        "libelle": libelle,
+        "statut": "termine" if i < index else ("en_cours" if i == index and p["etat"] == "en_cours" else "en_attente"),
+    } for i, (cle, libelle) in enumerate(ETAPES)]
+    return {
+        "etat": p["etat"],
+        "etapes": etapes,
+        "chargement_modele": bool(p.get("chargement_modele")) and courante == "authenticite",
+        "duree_s": round(time.time() - p.get("debut", time.time()), 1),
+        "erreur": p.get("erreur"),
+        "resultat": p.get("resultat") if p["etat"] == "termine" else None,
+    }
+
+
+def _run_verification(request: VerificationRequest, db: Session):
     article = db.query(Article).filter(Article.id == request.article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article non trouvé")
@@ -98,6 +190,9 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
     ml_result = None
     erreur_efficientnet = None
     detail_par_photo = None
+    # Premier passage depuis le démarrage : le chargement du modèle prend
+    # l'essentiel du temps, l'écran du propriétaire le signale.
+    _etape(article.id, "authenticite", chargement_modele=(efficientnet.status() != "actif"))
     if overview and efficientnet.is_available():
         # Une panne pendant la prédiction (et pas seulement au chargement)
         # ne doit jamais faire échouer la vérification : on retombe sur le
@@ -149,6 +244,7 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
         score_cnn = ml_result["score"]
 
     # ═══ ÉTAPE 3 — ANALYSE MULTI-TÊTES ═══
+    _etape(article.id, "logo", chargement_modele=False)
     score_logo = cv.logo_score(logo_img) if logo_img else _fallback("logo", article)
 
     # Étape 3a-bis — Signature de marque (ex. Tommy Hilfiger)
@@ -162,19 +258,24 @@ def launch_verification(request: VerificationRequest, db: Session = Depends(get_
         if brand_sig and brand_sig.get("conclusif"):
             score_logo = 0.5 * score_logo + 0.5 * brand_sig["score"]
 
+    _etape(article.id, "coutures")
     score_stitching = cv.stitching_score(stitch_img) if stitch_img else _fallback("stitching", article)
+    _etape(article.id, "texture")
     if overview:
         score_texture, glcm = cv.texture_score(overview)
     else:
         score_texture, glcm = _fallback("texture", article), {}
+    _etape(article.id, "etiquette")
     score_label = cv.label_score(label_img) if label_img else _fallback("label", article)
 
     # ═══ ÉTAPE 4 — RÈGLES MÉTIER ═══
+    _etape(article.id, "regles")
     score_rules, rules_detail = _business_rules(article, images, db)
 
     # ═══ ÉTAPE 4bis — VÉRIFICATION DE LA FACTURE D'ACHAT ═══
     # OCR : en production, le texte est extrait par Google Vision API.
     # On accepte un texte optionnel transmis dans la requête.
+    _etape(article.id, "facture")
     ocr_text = getattr(request, "invoice_ocr_text", None)
     if article.invoice_data:
         invoice_report = inv.verify_invoice(article.invoice_data, article, ocr_text)

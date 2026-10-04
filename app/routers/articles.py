@@ -7,6 +7,7 @@ from app.database import get_db
 from app.schemas.schemas import ArticleCreate, ArticleResponse, ArticleUpdate, CategoryEnum
 from app.models.models import Article, ArticlePhoto, Verification, VerificationStatus, User
 from app.dependencies import require_admin, log_admin_action
+from app.routers.verification import analyse_en_cours
 
 router = APIRouter()
 
@@ -330,6 +331,7 @@ def _enrich_article(article: Article, db: Session) -> dict:
         "condition": article.condition,
         "is_available": article.is_available,
         "verification_status": verif.status.value if verif else None,
+        "verification_en_cours": analyse_en_cours(article.id),
         "verification_score": verif.score_global if verif else None,
         "photo": overview.image_data if overview else None,
         "created_at": article.created_at,

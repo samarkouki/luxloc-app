@@ -85,6 +85,7 @@ class ArticleResponse(BaseModel):
     is_available: bool
     verification_status: Optional[str] = None
     verification_score: Optional[float] = None
+    verification_en_cours: bool = False
     photo: Optional[str] = None  # Photo principale (overview) en base64
     created_at: datetime
 
